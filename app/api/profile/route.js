@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
-import { writeFile } from 'fs/promises';
-import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 async function getUserFromToken(request) {
   const token = request.cookies.get('auth_token')?.value;
@@ -53,15 +59,27 @@ export async function POST(request) {
     const file = formData.get('bank_qr'); // File object
     let bank_qr_path = formData.get('existing_bank_qr') || '';
 
-    // Handle file upload
+    // Handle file upload to Cloudinary
     if (file && typeof file !== 'string' && file.name) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const filename = `${decoded.userId}_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-      const uploadDir = path.join(process.cwd(), 'public/uploads');
-      const filepath = path.join(uploadDir, filename);
-      
-      await writeFile(filepath, buffer);
-      bank_qr_path = `/uploads/${filename}`;
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      try {
+        const uploadResponse = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream({
+            resource_type: 'auto',
+            folder: 'shopee_affiliate/qrcodes',
+          }, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }).end(buffer);
+        });
+        
+        bank_qr_path = uploadResponse.secure_url;
+      } catch (uploadError) {
+        console.error('Cloudinary Upload Error:', uploadError);
+        return NextResponse.json({ error: 'Lỗi khi upload ảnh lên Cloudinary' }, { status: 500 });
+      }
     }
 
     const db = await getConnection();
