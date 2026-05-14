@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     bank_qr VARCHAR(255),
     reset_token VARCHAR(255),
     reset_token_expiry DATETIME,
+    commission_rate DECIMAL(5,2) DEFAULT 0.50,
     role ENUM('user', 'admin') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,8 +35,9 @@ CREATE TABLE IF NOT EXISTS orders (
     product_type VARCHAR(50),
     price DECIMAL(15,2),
     quantity INT,
-    order_value DECIMAL(15,2),
-    total_commission DECIMAL(15,2), -- Hoa hồng ròng tiếp thị liên kết(₫)
+    order_value DECIMAL(15,2) DEFAULT 0,
+    total_commission DECIMAL(15,2) DEFAULT 0,
+    user_commission DECIMAL(15,2) DEFAULT 0,
     sub_id1 VARCHAR(50), -- Username
     sub_id2 VARCHAR(50),
     sub_id3 VARCHAR(50),

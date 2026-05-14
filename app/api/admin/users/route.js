@@ -27,7 +27,7 @@ export async function GET(request) {
 
   try {
     const db = await getConnection();
-    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, role, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
+    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, role, commission_rate, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
     const [countRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     
     return NextResponse.json({
@@ -46,12 +46,12 @@ export async function POST(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
-    const { username, email, password, full_name, phone, role } = await request.json();
+    const { username, email, password, full_name, phone, role, commission_rate } = await request.json();
     const password_hash = await bcrypt.hash(password || '123456', 10);
     const db = await getConnection();
     await db.execute(
-      'INSERT INTO users (username, email, password_hash, full_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, email, password_hash, full_name || '', phone || '', role || 'user']
+      'INSERT INTO users (username, email, password_hash, full_name, phone, role, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [username, email, password_hash, full_name || '', phone || '', role || 'user', commission_rate || 0.50]
     );
     return NextResponse.json({ message: 'User created' });
   } catch (error) {
@@ -63,19 +63,19 @@ export async function PUT(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
-    const { id, username, email, full_name, phone, role, password } = await request.json();
+    const { id, username, email, full_name, phone, role, password, commission_rate } = await request.json();
     const db = await getConnection();
     
     if (password) {
       const password_hash = await bcrypt.hash(password, 10);
       await db.execute(
-        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, password_hash=? WHERE id=?',
-        [username, email, full_name || '', phone || '', role, password_hash, id]
+        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, password_hash=?, commission_rate=? WHERE id=?',
+        [username, email, full_name || '', phone || '', role, password_hash, commission_rate, id]
       );
     } else {
       await db.execute(
-        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=? WHERE id=?',
-        [username, email, full_name || '', phone || '', role, id]
+        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, commission_rate=? WHERE id=?',
+        [username, email, full_name || '', phone || '', role, commission_rate, id]
       );
     }
     return NextResponse.json({ message: 'User updated' });

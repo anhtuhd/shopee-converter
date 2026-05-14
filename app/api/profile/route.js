@@ -29,7 +29,7 @@ export async function GET(request) {
   try {
     const db = await getConnection();
     const [users] = await db.execute(
-      'SELECT id, username, email, full_name, phone, bank_qr, role, created_at FROM users WHERE id = ?', 
+      'SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, created_at FROM users WHERE id = ?', 
       [decoded.userId]
     );
 

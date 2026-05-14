@@ -50,8 +50,8 @@ function HistoryContent() {
   const paymentHistory = orders.filter(o => o.status === 'Đã thanh toán' || o.status === 'Hoàn thành');
   
   // Calculate total pending and total paid
-  const totalCompleted = orders.filter(o => o.status === 'Hoàn thành').reduce((acc, o) => acc + Number(o.total_commission), 0);
-  const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.total_commission), 0);
+  const totalCompleted = orders.filter(o => o.status === 'Hoàn thành').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
+  const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
 
   return (
     <div className="main-container" style={{ alignItems: 'stretch', padding: '40px 24px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -82,7 +82,7 @@ function HistoryContent() {
                   <th style={{ padding: '12px 8px' }}>Sản phẩm</th>
                   <th style={{ padding: '12px 8px' }}>Thời gian</th>
                   <th style={{ padding: '12px 8px' }}>Tổng tiền</th>
-                  <th style={{ padding: '12px 8px' }}>Hoa hồng</th>
+                  <th style={{ padding: '12px 8px' }}>Hoa hồng nhận</th>
                   <th style={{ padding: '12px 8px' }}>Trạng thái</th>
                 </tr>
               </thead>
@@ -96,7 +96,7 @@ function HistoryContent() {
                       <td style={{ padding: '12px 8px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={order.item_name}>{order.item_name}</td>
                       <td style={{ padding: '12px 8px' }}>{new Date(order.order_time).toLocaleString('vi-VN')}</td>
                       <td style={{ padding: '12px 8px' }}>{Number(order.order_value).toLocaleString('vi-VN')} đ</td>
-                      <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: '500' }}>{Number(order.total_commission).toLocaleString('vi-VN')} đ</td>
+                      <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: '500' }}>{Number(order.user_commission || order.total_commission).toLocaleString('vi-VN')} đ</td>
                       <td style={{ padding: '12px 8px' }}>
                         <span className={`status-badge status-${(order.status || '').toLowerCase().replace(/ /g, '-')}`}>
                           {order.status}
@@ -143,7 +143,7 @@ function HistoryContent() {
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '12px 8px' }}>{order.order_id}</td>
                         <td style={{ padding: '12px 8px' }}>{new Date(order.order_time).toLocaleString('vi-VN')}</td>
-                        <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: '500' }}>+{Number(order.total_commission).toLocaleString('vi-VN')} đ</td>
+                        <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: '500' }}>+{Number(order.user_commission || order.total_commission).toLocaleString('vi-VN')} đ</td>
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge status-${(order.status || '').toLowerCase().replace(/ /g, '-')}`}>
                             {order.status}

@@ -13,12 +13,22 @@ export default function AdminDashboard() {
 
   // Users
   const [users, setUsers] = useState([]);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editCommission, setEditCommission] = useState('');
   
   // Orders
   const [orders, setOrders] = useState([]);
   const [csvFile, setCsvFile] = useState(null);
   const [csvStatus, setCsvStatus] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  // Payouts
+  const [payouts, setPayouts] = useState([]);
+  const [cutoffDate, setCutoffDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`;
+  });
+  const [payoutStatus, setPayoutStatus] = useState('');
 
   // Filters
   const [filterStatus, setFilterStatus] = useState('');
@@ -52,9 +62,7 @@ export default function AdminDashboard() {
       setGlobalAffiliateId(setData.global_affiliate_id || '');
 
       // Fetch users
-      const usrRes = await fetch('/api/admin/users');
-      const usrData = await usrRes.json();
-      setUsers(usrData.users || []);
+      await fetchUsers();
 
       // Fetch orders
       await fetchOrders();
@@ -64,6 +72,12 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUsers = async () => {
+    const usrRes = await fetch('/api/admin/users');
+    const usrData = await usrRes.json();
+    setUsers(usrData.users || []);
   };
 
   const fetchOrders = async () => {
@@ -86,6 +100,28 @@ export default function AdminDashboard() {
       console.error(err);
     }
   };
+
+  const fetchPayouts = async () => {
+    try {
+      setPayoutStatus('Đang tải dữ liệu...');
+      const res = await fetch(`/api/admin/payouts?cutoffDate=${cutoffDate}`);
+      const data = await res.json();
+      if (res.ok) {
+        setPayouts(data.payouts || []);
+        setPayoutStatus('');
+      } else {
+        setPayoutStatus(data.error || 'Lỗi khi tải dữ liệu thanh toán');
+      }
+    } catch (err) {
+      setPayoutStatus('Lỗi kết nối');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'payouts') {
+      fetchPayouts();
+    }
+  }, [activeTab, cutoffDate]);
 
   const clearFilters = () => {
     setFilterStatus('');
@@ -149,10 +185,7 @@ export default function AdminDashboard() {
       
       if (res.ok) {
         setCsvStatus(data.message);
-        // Refresh orders
-        const ordRes = await fetch('/api/admin/orders');
-        const ordData = await ordRes.json();
-        setOrders(ordData.orders || []);
+        await fetchOrders();
       } else {
         setCsvStatus(data.error || 'Lỗi khi upload.');
       }
@@ -160,6 +193,57 @@ export default function AdminDashboard() {
       setCsvStatus('Lỗi kết nối.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpdateCommission = async (user) => {
+    const newRate = prompt(`Nhập tỷ lệ hoa hồng mới cho ${user.username} (Ví dụ: 0.8 cho 80%)`, user.commission_rate);
+    if (newRate === null) return;
+    
+    const rateFloat = parseFloat(newRate);
+    if (isNaN(rateFloat) || rateFloat < 0 || rateFloat > 10) {
+      alert('Tỷ lệ không hợp lệ');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...user,
+          commission_rate: rateFloat 
+        })
+      });
+      if (res.ok) {
+        alert('Cập nhật thành công');
+        await fetchUsers();
+      } else {
+        alert('Lỗi khi cập nhật');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const handleMarkPaid = async (username) => {
+    if (!confirm(`Xác nhận đã thanh toán cho user ${username}? Hệ thống sẽ đánh dấu tất cả các đơn 'Hoàn thành' trước ngày ${cutoffDate} là 'Đã thanh toán'.`)) return;
+    
+    try {
+      const res = await fetch('/api/admin/payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, cutoffDate })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchPayouts();
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
     }
   };
 
@@ -202,6 +286,12 @@ export default function AdminDashboard() {
           Quản lý Đơn hàng
         </button>
         <button 
+          className={`tab-btn ${activeTab === 'payouts' ? 'active' : ''}`}
+          onClick={() => setActiveTab('payouts')}
+        >
+          Tổng hợp Thanh toán
+        </button>
+        <button 
           className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
         >
@@ -214,15 +304,15 @@ export default function AdminDashboard() {
           <div>
             <h3 style={{ marginBottom: '16px' }}>Danh sách người dùng</h3>
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
                     <th style={{ padding: '12px 8px' }}>ID</th>
                     <th style={{ padding: '12px 8px' }}>Username</th>
-                    <th style={{ padding: '12px 8px' }}>Email</th>
                     <th style={{ padding: '12px 8px' }}>Họ Tên</th>
+                    <th style={{ padding: '12px 8px' }}>Tỷ lệ hoa hồng</th>
                     <th style={{ padding: '12px 8px' }}>Quyền</th>
-                    <th style={{ padding: '12px 8px' }}>Ngày tạo</th>
+                    <th style={{ padding: '12px 8px' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -233,12 +323,18 @@ export default function AdminDashboard() {
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '12px 8px' }}>{u.id}</td>
                         <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{u.username}</td>
-                        <td style={{ padding: '12px 8px' }}>{u.email}</td>
                         <td style={{ padding: '12px 8px' }}>{u.full_name}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{(u.commission_rate * 100).toFixed(0)}%</span>
+                        </td>
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge ${u.role === 'admin' ? 'status-hoàn-thành' : 'status-đã-hủy'}`}>{u.role}</span>
                         </td>
-                        <td style={{ padding: '12px 8px' }}>{new Date(u.created_at).toLocaleDateString('vi-VN')}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <button onClick={() => handleUpdateCommission(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
+                            Sửa tỷ lệ
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -311,36 +407,38 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <h3 style={{ marginBottom: '16px' }}>Danh sách đơn hàng hệ thống (20 đơn gần nhất)</h3>
+            <h3 style={{ marginBottom: '16px' }}>Danh sách đơn hàng hệ thống</h3>
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
                     <th style={{ padding: '12px 8px' }}>Mã Đơn</th>
-                    <th style={{ padding: '12px 8px' }}>Username (Sub_id1)</th>
+                    <th style={{ padding: '12px 8px' }}>Username</th>
                     <th style={{ padding: '12px 8px' }}>Thời gian</th>
-                    <th style={{ padding: '12px 8px' }}>Hoa hồng</th>
+                    <th style={{ padding: '12px 8px' }}>HH Shopee</th>
+                    <th style={{ padding: '12px 8px' }}>HH User</th>
                     <th style={{ padding: '12px 8px' }}>Trạng thái</th>
                     <th style={{ padding: '12px 8px' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Chưa có đơn hàng nào.</td></tr>
+                    <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có đơn hàng nào.</td></tr>
                   ) : (
                     orders.map((o, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '12px 8px' }}>{o.order_id}</td>
                         <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{o.sub_id1 || '-'}</td>
                         <td style={{ padding: '12px 8px' }}>{new Date(o.order_time).toLocaleString('vi-VN')}</td>
-                        <td style={{ padding: '12px 8px', color: '#34a853' }}>{Number(o.total_commission).toLocaleString('vi-VN')} đ</td>
+                        <td style={{ padding: '12px 8px', color: '#666', fontSize: '13px' }}>{Number(o.total_commission).toLocaleString('vi-VN')} đ</td>
+                        <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: 'bold' }}>{Number(o.user_commission || 0).toLocaleString('vi-VN')} đ</td>
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge status-${(o.status || '').toLowerCase().replace(/ /g, '-')}`}>{o.status}</span>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {o.status === 'Hoàn thành' && (
                             <button onClick={() => handlePayOrder(o.id)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
-                              Thanh toán
+                              Thanh toán lẻ
                             </button>
                           )}
                         </td>
@@ -371,6 +469,68 @@ export default function AdminDashboard() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'payouts' && (
+          <div>
+            <div style={{ marginBottom: '24px', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', background: '#f8f9fa' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ marginBottom: '8px' }}>Tổng hợp tiền cần trả</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--secondary-text)' }}>Chỉ tính các đơn hàng có trạng thái <strong>'Hoàn thành'</strong> trước ngày chốt.</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ fontWeight: '600' }}>Ngày chốt:</label>
+                  <input type="date" className="form-input" value={cutoffDate} onChange={e => setCutoffDate(e.target.value)} style={{ padding: '8px 12px' }} />
+                </div>
+              </div>
+            </div>
+
+            {payoutStatus && <div style={{ textAlign: 'center', padding: '20px', color: 'var(--secondary-text)' }}>{payoutStatus}</div>}
+
+            <div className="table-container" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                    <th style={{ padding: '12px 8px' }}>Username</th>
+                    <th style={{ padding: '12px 8px' }}>Họ Tên</th>
+                    <th style={{ padding: '12px 8px' }}>Thông tin Bank (QR)</th>
+                    <th style={{ padding: '12px 8px' }}>Số đơn</th>
+                    <th style={{ padding: '12px 8px' }}>Tổng tiền phải trả</th>
+                    <th style={{ padding: '12px 8px' }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payouts.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center' }}>Không có yêu cầu thanh toán nào trước ngày này.</td></tr>
+                  ) : (
+                    payouts.map((p, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{p.username}</td>
+                        <td style={{ padding: '12px 8px' }}>{p.full_name || '-'}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {p.bank_qr ? (
+                            <a href={p.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px' }}>Xem mã QR</a>
+                          ) : (
+                            <span style={{ color: '#ccc', fontSize: '12px' }}>Chưa có QR</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>{p.order_count} đơn</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#ea4335', fontSize: '18px' }}>
+                          {Number(p.total_payout).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <button onClick={() => handleMarkPaid(p.username)} className="btn-primary" style={{ padding: '6px 12px', fontSize: '13px' }}>
+                            Đã thanh toán xong
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

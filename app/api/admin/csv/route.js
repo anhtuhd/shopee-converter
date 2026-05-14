@@ -73,9 +73,16 @@ export async function POST(request) {
     let updatedCount = 0;
     let insertedCount = 0;
 
+    // Fetch user commission rates for all users at once
+    const [userRows] = await db.execute('SELECT username, commission_rate FROM users');
+    const userRates = {};
+    userRows.forEach(u => {
+      userRates[u.username] = parseFloat(u.commission_rate) || 0.50;
+    });
+
     for (const record of finalRecords) {
       const order_id = record['ID đơn hàng'];
-      const item_id = record['Item id'] || ''; // some orders might just have no item_id if simple
+      const item_id = record['Item id'] || ''; 
       
       const status = record['Trạng thái đặt hàng'];
       const checkout_id = record['Checkout id'];
@@ -100,6 +107,10 @@ export async function POST(request) {
 
       if (!order_id) continue;
 
+      // Calculate user specific commission
+      const rate = userRates[sub_id1] || 0.50;
+      const user_commission = total_commission * rate;
+
       // Upsert
       const [existing] = await db.execute('SELECT id FROM orders WHERE order_id = ? AND item_id = ?', [order_id, item_id]);
 
@@ -108,12 +119,12 @@ export async function POST(request) {
           UPDATE orders SET 
             status = ?, checkout_id = ?, order_time = ?, completed_time = ?, click_time = ?,
             shop_name = ?, shop_id = ?, item_name = ?, product_type = ?, price = ?, quantity = ?,
-            order_value = ?, total_commission = ?, sub_id1 = ?, sub_id2 = ?, sub_id3 = ?, sub_id4 = ?, sub_id5 = ?, channel = ?
+            order_value = ?, total_commission = ?, user_commission = ?, sub_id1 = ?, sub_id2 = ?, sub_id3 = ?, sub_id4 = ?, sub_id5 = ?, channel = ?
           WHERE id = ?
         `, [
           status, checkout_id, order_time, completed_time, click_time,
           shop_name, shop_id, item_name, product_type, price, quantity,
-          order_value, total_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel,
+          order_value, total_commission, user_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel,
           existing[0].id
         ]);
         updatedCount++;
@@ -122,12 +133,12 @@ export async function POST(request) {
           INSERT INTO orders (
             order_id, status, checkout_id, order_time, completed_time, click_time,
             shop_name, shop_id, item_id, item_name, product_type, price, quantity,
-            order_value, total_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            order_value, total_commission, user_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           order_id, status, checkout_id, order_time, completed_time, click_time,
           shop_name, shop_id, item_id, item_name, product_type, price, quantity,
-          order_value, total_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
+          order_value, total_commission, user_commission, sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
         ]);
         insertedCount++;
       }
