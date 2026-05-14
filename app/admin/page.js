@@ -188,7 +188,7 @@ export default function AdminDashboard() {
     <div className="main-container" style={{ alignItems: 'stretch', padding: '40px 24px', maxWidth: '1200px', margin: '0 auto' }}>
       <h2 style={{ fontSize: '24px', marginBottom: '24px', color: '#ea4335' }}>Admin Dashboard</h2>
       
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
         <button 
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
                 <button onClick={clearFilters} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>Làm mới bộ lọc</button>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div className="admin-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>Trạng thái</label>
                   <select className="form-input" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: '8px 12px' }}>
@@ -290,10 +290,10 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '16px' }}>
+              <div className="admin-filter-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginTop: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>Khoảng thời gian đặt hàng</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="date-range-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input type="date" className="form-input" value={filterStartOrder} onChange={e => setFilterStartOrder(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
                     <span style={{ color: 'var(--secondary-text)' }}>đến</span>
                     <input type="date" className="form-input" value={filterEndOrder} onChange={e => setFilterEndOrder(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>Khoảng thời gian hoàn thành</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="date-range-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input type="date" className="form-input" value={filterStartCompleted} onChange={e => setFilterStartCompleted(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />
                     <span style={{ color: 'var(--secondary-text)' }}>đến</span>
                     <input type="date" className="form-input" value={filterEndCompleted} onChange={e => setFilterEndCompleted(e.target.value)} style={{ flex: 1, padding: '8px 12px' }} />

@@ -57,7 +57,7 @@ function HistoryContent() {
     <div className="main-container" style={{ alignItems: 'stretch', padding: '40px 24px', maxWidth: '1000px', margin: '0 auto' }}>
       <h2 style={{ fontSize: '24px', marginBottom: '24px' }}>Lịch sử Đơn hàng & Thanh toán</h2>
       
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
         <button 
           className={`tab-btn ${activeTab === 'purchases' ? 'active' : ''}`}
           onClick={() => setActiveTab('purchases')}
@@ -112,13 +112,13 @@ function HistoryContent() {
 
         {activeTab === 'payments' && (
           <div>
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
-              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: 1, background: '#f8f9fa' }}>
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
+              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: '1 1 300px', background: '#f8f9fa' }}>
                 <div style={{ color: 'var(--secondary-text)', fontSize: '14px' }}>Hoa hồng chưa thanh toán (Hoàn thành)</div>
                 <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ea4335' }}>{totalCompleted.toLocaleString('vi-VN')} đ</div>
                 <div style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px' }}>Sẽ được Admin thanh toán hàng tháng vào ngày cố định.</div>
               </div>
-              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: 1, background: '#f8f9fa' }}>
+              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: '1 1 300px', background: '#f8f9fa' }}>
                 <div style={{ color: 'var(--secondary-text)', fontSize: '14px' }}>Đã thanh toán thành công</div>
                 <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#34a853' }}>{totalPaid.toLocaleString('vi-VN')} đ</div>
               </div>

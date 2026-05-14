@@ -184,7 +184,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div style={{ display: 'flex', gap: '16px', width: '100%', justifyContent: 'center' }}>
+          <div className="preview-actions" style={{ display: 'flex', gap: '16px', width: '100%', justifyContent: 'center' }}>
             <button className="btn-secondary" onClick={handleCopy} style={{ flex: 1, padding: '12px 24px', fontSize: '16px', fontWeight: '500', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {copied ? 'Đã copy!' : 'Copy Link'}
             </button>
