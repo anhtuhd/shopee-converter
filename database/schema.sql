@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(100),
     phone VARCHAR(20),
     bank_qr VARCHAR(255),
+    reset_token VARCHAR(255),
+    reset_token_expiry DATETIME,
     role ENUM('user', 'admin') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

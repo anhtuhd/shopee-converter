@@ -60,6 +60,11 @@ export default function Login() {
             />
           </div>
           {error && <div className="form-error">{error}</div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <Link href="/forgot-password" style={{ fontSize: '13px', color: 'var(--primary-color)', textDecoration: 'none' }}>
+              Quên mật khẩu?
+            </Link>
+          </div>
           <button type="submit" className="btn-primary form-button">Đăng nhập</button>
         </form>
         <div className="form-footer">
