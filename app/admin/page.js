@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   
   // Settings
   const [globalAffiliateId, setGlobalAffiliateId] = useState('');
+  const [guestAffiliateId, setGuestAffiliateId] = useState('');
   const [settingsStatus, setSettingsStatus] = useState('');
 
   // Users
@@ -60,6 +61,7 @@ export default function AdminDashboard() {
       }
       const setData = await setRes.json();
       setGlobalAffiliateId(setData.global_affiliate_id || '');
+      setGuestAffiliateId(setData.guest_affiliate_id || '');
 
       // Fetch users
       await fetchUsers();
@@ -153,7 +155,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ global_affiliate_id: globalAffiliateId })
+        body: JSON.stringify({ global_affiliate_id: globalAffiliateId, guest_affiliate_id: guestAffiliateId })
       });
       if (res.ok) {
         setSettingsStatus('Lưu thành công!');
@@ -535,24 +537,48 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'settings' && (
-          <div className="profile-section" style={{ maxWidth: '600px' }}>
+          <div className="profile-section" style={{ maxWidth: '640px' }}>
             <form onSubmit={handleUpdateSettings}>
+              <div style={{ padding: '16px', background: '#f0f7ff', borderRadius: '8px', marginBottom: '24px', border: '1px solid #cce0ff' }}>
+                <p style={{ fontSize: '13px', color: '#1a5fb4', margin: 0 }}>
+                  ⓘ Hệ thống hỗ trợ 2 Affiliate ID riêng biệt: một cho user đã đăng ký tài khoản và một cho khách vãng lai chưa đăng nhập.
+                </p>
+              </div>
+
               <div className="form-group">
-                <label className="form-label">Global Affiliate ID</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={globalAffiliateId} 
-                  onChange={e => setGlobalAffiliateId(e.target.value)} 
+                <label className="form-label">Affiliate ID — Dành cho User đã đăng ký</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={globalAffiliateId}
+                  onChange={e => setGlobalAffiliateId(e.target.value)}
                   placeholder="Ví dụ: 17399820370"
                 />
-                <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px' }}>
-                  ID này sẽ được gắn vào tất cả các link chuyển đổi của toàn bộ user.
+                <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
+                  Áp dụng cho tất cả user đã đăng nhập tài khoản khi chuyển đổi link.
                 </span>
               </div>
-              
+
+              <div className="form-group">
+                <label className="form-label">Affiliate ID — Dành cho Khách vãng lai (Chưa đăng nhập)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={guestAffiliateId}
+                  onChange={e => setGuestAffiliateId(e.target.value)}
+                  placeholder="Ví dụ: 17399820370"
+                />
+                <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
+                  Áp dụng cho user chưa đăng nhập khi chuyển đổi link trên trang chủ.
+                </span>
+              </div>
+
               <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Lưu cài đặt</button>
-              {settingsStatus && <span style={{ marginLeft: '16px', color: settingsStatus.includes('Lỗi') ? 'red' : 'green' }}>{settingsStatus}</span>}
+              {settingsStatus && (
+                <span style={{ marginLeft: '16px', color: settingsStatus.includes('Lỗi') ? 'red' : 'green', fontWeight: '500' }}>
+                  {settingsStatus}
+                </span>
+              )}
             </form>
           </div>
         )}

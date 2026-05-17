@@ -3,7 +3,8 @@ import { getConnection } from '@/lib/db';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Khởi tạo Resend một lần duy nhất khi module load (không tạo lại mỗi request)
+const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
 
 export async function POST(request) {
   try {
@@ -21,31 +22,26 @@ export async function POST(request) {
     }
 
     const user = users[0];
-    
+
     // Generate token (32 random bytes, hex encoded)
     const resetToken = crypto.randomBytes(32).toString('hex');
-    
+
     // Token expires in 5 minutes
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + 5);
-    
-    // Format to MySQL datetime: YYYY-MM-DD HH:MM:SS
     const mysqlExpiry = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
 
-    // Update user with reset token
     await db.execute(
       'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?',
       [resetToken, mysqlExpiry, email]
     );
 
-    // Create reset URL
-    // In production, this should be the actual base URL
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    // Send email using Resend
-    const { data, error } = await resend.emails.send({
-      from: 'Shopee Affiliate <onboarding@resend.dev>', // Resend test email or verified domain
+    // Gửi email bằng Resend
+    const { error } = await resend.emails.send({
+      from: 'Shopee Affiliate <onboarding@resend.dev>',
       to: email,
       subject: 'Khôi phục mật khẩu - Shopee Affiliate',
       html: `

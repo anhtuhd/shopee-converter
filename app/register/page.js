@@ -10,12 +10,14 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    setDetails('');
 
     if (password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
@@ -34,13 +36,13 @@ export default function Register() {
       const data = await res.json();
 
       if (res.ok) {
-        // Auto login or redirect to login
         router.push('/login');
       } else {
         setError(data.error || 'Đăng ký thất bại');
+        setDetails(data.details || '');
       }
     } catch (err) {
-      setError('Có lỗi xảy ra, vui lòng thử lại.');
+      setError(`Lỗi kết nối mạng: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,17 @@ export default function Register() {
               required
             />
           </div>
-          {error && <div className="form-error">{error}</div>}
+          {error && (
+            <div className="form-error" style={{ wordBreak: 'break-word', textAlign: 'left' }}>
+              <div>{error}</div>
+              {details && (
+                <details style={{ marginTop: '10px', fontSize: '12px', backgroundColor: 'rgba(0,0,0,0.05)', padding: '8px', borderRadius: '4px' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Chi tiết lỗi hệ thống (Click để xem)</summary>
+                  <pre style={{ whiteSpace: 'pre-wrap', marginTop: '5px', overflowX: 'auto', maxHeight: '200px' }}>{details}</pre>
+                </details>
+              )}
+            </div>
+          )}
           <button type="submit" className="btn-primary form-button" disabled={loading}>
             {loading ? 'Đang xử lý...' : 'Đăng ký'}
           </button>

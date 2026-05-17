@@ -43,3 +43,6 @@ next-env.d.ts
 # User uploads
 public/uploads/*
 !public/uploads/.gitkeep
+
+# Build archives
+*.zip

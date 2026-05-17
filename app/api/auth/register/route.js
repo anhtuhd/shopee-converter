@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { getConnection } from '@/lib/db';
 
 function validateEmail(email) {
@@ -58,6 +58,9 @@ export async function POST(request) {
     return NextResponse.json({ message: 'Đăng ký thành công', username }, { status: 201 });
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ error: 'Lỗi máy chủ nội bộ' }, { status: 500 });
+    return NextResponse.json({ 
+      error: `Lỗi đăng ký (500): ${error.message || error.code || 'Lỗi không xác định'}`,
+      details: error.stack 
+    }, { status: 500 });
   }
 }

@@ -5,7 +5,7 @@ import { v2 as cloudinary } from 'cloudinary';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
 
-// Cloudinary Configuration
+// Cloudinary Configuration (khởi tạo một lần duy nhất khi module load)
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -29,13 +29,12 @@ export async function GET(request) {
   try {
     const db = await getConnection();
     const [users] = await db.execute(
-      'SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, created_at FROM users WHERE id = ?', 
+      'SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, created_at FROM users WHERE id = ?',
       [decoded.userId]
     );
 
     if (users.length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Fetch user's orders (history) based on sub_id1 matching their username
     const [orders] = await db.execute(
       'SELECT * FROM orders WHERE sub_id1 = ? ORDER BY order_time DESC',
       [users[0].username]
@@ -56,10 +55,10 @@ export async function POST(request) {
     const formData = await request.formData();
     const full_name = formData.get('full_name') || '';
     const phone = formData.get('phone') || '';
-    const file = formData.get('bank_qr'); // File object
+    const file = formData.get('bank_qr');
     let bank_qr_path = formData.get('existing_bank_qr') || '';
 
-    // Handle file upload to Cloudinary
+    // Upload ảnh QR lên Cloudinary
     if (file && typeof file !== 'string' && file.name) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -74,7 +73,7 @@ export async function POST(request) {
             else resolve(result);
           }).end(buffer);
         });
-        
+
         bank_qr_path = uploadResponse.secure_url;
       } catch (uploadError) {
         console.error('Cloudinary Upload Error:', uploadError);

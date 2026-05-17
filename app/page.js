@@ -62,7 +62,7 @@ export default function Home() {
         return;
       }
 
-      const affiliateId = data.affiliateId || '17399820370';
+      const affiliateId = user ? (data.affiliateId || '17399820370') : (data.guestAffiliateId || '17399820370');
       const subId = user || '';
       const encodedLink = encodeURIComponent(data.finalLink);
 

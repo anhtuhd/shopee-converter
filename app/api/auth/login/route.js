@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
 
@@ -51,6 +51,9 @@ export async function POST(request) {
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Lỗi máy chủ nội bộ' }, { status: 500 });
+    return NextResponse.json({ 
+      error: `Lỗi đăng nhập (500): ${error.message || error.code || 'Lỗi không xác định'}`,
+      details: error.stack 
+    }, { status: 500 });
   }
 }

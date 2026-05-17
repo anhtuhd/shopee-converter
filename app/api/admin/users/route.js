@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { getConnection } from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
