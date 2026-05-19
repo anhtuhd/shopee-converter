@@ -41,7 +41,7 @@ export async function POST(request) {
 
     // Gửi email bằng Resend
     const { error } = await resend.emails.send({
-      from: 'Shopee Affiliate <onboarding@resend.dev>',
+      from: 'Shopee Affiliate <noreply@pishare.site>',
       to: email,
       subject: 'Khôi phục mật khẩu - Shopee Affiliate',
       html: `
