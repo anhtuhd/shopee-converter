@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS orders (
     shop_name VARCHAR(255),
     shop_id VARCHAR(50),
     item_id VARCHAR(50),
+    model_id VARCHAR(50) NOT NULL DEFAULT '',
     item_name TEXT,
     product_type VARCHAR(50),
     price DECIMAL(15,2),
@@ -46,5 +47,5 @@ CREATE TABLE IF NOT EXISTS orders (
     channel VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_order_item (order_id, item_id)
+    UNIQUE KEY unique_order_item_model (order_id, item_id, model_id)
 );

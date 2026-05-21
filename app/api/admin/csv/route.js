@@ -63,10 +63,10 @@ export async function POST(request) {
     const userRates = {};
     userRows.forEach(u => { userRates[u.username] = parseFloat(u.commission_rate) || 0.50; });
 
-    // Lấy toàn bộ order_id + item_id đã tồn tại cùng trạng thái — tránh N+1 query trong vòng lặp
-    const [existingRows] = await db.execute('SELECT id, order_id, item_id, status FROM orders');
+    // Lấy toàn bộ order_id + item_id + model_id đã tồn tại cùng trạng thái — tránh N+1 query trong vòng lặp
+    const [existingRows] = await db.execute('SELECT id, order_id, item_id, model_id, status FROM orders');
     const existingMap = new Map();
-    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}`, { id: r.id, status: r.status }));
+    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}__${r.model_id || ''}`, { id: r.id, status: r.status }));
 
     const toInsertMap = new Map();
     const toUpdateMap = new Map();
@@ -76,6 +76,7 @@ export async function POST(request) {
       if (!order_id) continue;
 
       const item_id        = record['Item id'] || '';
+      const model_id        = record['ID Model'] || '';
       const status         = record['Trạng thái đặt hàng'] || '';
       const checkout_id    = record['Checkout id'] || null;
       const order_time     = parseDate(record['Thời Gian Đặt Hàng']) || null;
@@ -88,7 +89,7 @@ export async function POST(request) {
       const price          = parseFloat(record['Giá(₫)']) || 0;
       const quantity       = parseInt(record['Số lượng']) || 0;
       const order_value    = parseFloat(record['Giá trị đơn hàng (₫)']) || 0;
-      const total_commission = parseFloat(record['Hoa hồng ròng tiếp thị liên kết(₫)']) || 0;
+      const total_commission = parseFloat(record['Tổng hoa hồng sản phẩm(₫)']) || 0;
       const sub_id1 = record['Sub_id1'] || '';
       const sub_id2 = record['Sub_id2'] || null;
       const sub_id3 = record['Sub_id3'] || null;
@@ -99,7 +100,7 @@ export async function POST(request) {
       const rate = userRates[sub_id1] || 0.50;
       const user_commission = total_commission * rate;
 
-      const key = `${order_id}__${item_id}`;
+      const key = `${order_id}__${item_id}__${model_id}`;
       const existing = existingMap.get(key);
 
       if (existing) {
@@ -117,7 +118,7 @@ export async function POST(request) {
         } else {
           toInsertMap.set(key, [
             order_id, status, checkout_id, order_time, completed_time, click_time,
-            shop_name, shop_id, item_id, item_name, product_type, price, quantity,
+            shop_name, shop_id, item_id, model_id, item_name, product_type, price, quantity,
             order_value, total_commission, user_commission,
             sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
           ]);
@@ -131,12 +132,12 @@ export async function POST(request) {
     // Bulk INSERT — một câu query thay vì N câu query
     if (toInsert.length > 0) {
       const placeholders = toInsert.map(() =>
-        '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
       ).join(',');
       await db.execute(
         `INSERT INTO orders (
           order_id, status, checkout_id, order_time, completed_time, click_time,
-          shop_name, shop_id, item_id, item_name, product_type, price, quantity,
+          shop_name, shop_id, item_id, model_id, item_name, product_type, price, quantity,
           order_value, total_commission, user_commission,
           sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
         ) VALUES ${placeholders}`,
