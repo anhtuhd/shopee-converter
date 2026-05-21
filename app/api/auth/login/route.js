@@ -15,8 +15,11 @@ export async function POST(request) {
 
     const db = await getConnection();
 
+    // Chuyển về chữ thường để cho phép đăng nhập không phân biệt chữ hoa, chữ thường
+    const searchUsername = username.toLowerCase();
+
     // Find user by username OR email
-    const [rows] = await db.execute('SELECT id, username, password_hash, role FROM users WHERE username = ? OR email = ?', [username, username]);
+    const [rows] = await db.execute('SELECT id, username, password_hash, role FROM users WHERE username = ? OR email = ?', [searchUsername, searchUsername]);
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Sai tên đăng nhập/email hoặc mật khẩu' }, { status: 401 });
     }

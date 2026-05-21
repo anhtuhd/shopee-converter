@@ -49,9 +49,12 @@ export async function POST(request) {
     const { username, email, password, full_name, phone, role, commission_rate } = await request.json();
     const password_hash = await bcrypt.hash(password || '123456', 10);
     const db = await getConnection();
+    const lowerUsername = username ? username.toLowerCase() : '';
+    // Nếu commission_rate không được truyền hoặc là null/undefined, mặc định luôn là 0.5
+    const finalRate = (commission_rate === undefined || commission_rate === null || commission_rate === '') ? 0.50 : parseFloat(commission_rate);
     await db.execute(
       'INSERT INTO users (username, email, password_hash, full_name, phone, role, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [username, email, password_hash, full_name || '', phone || '', role || 'user', commission_rate || 0.50]
+      [lowerUsername, email, password_hash, full_name || '', phone || '', role || 'user', finalRate]
     );
     return NextResponse.json({ message: 'User created' });
   } catch (error) {

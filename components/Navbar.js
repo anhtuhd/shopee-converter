@@ -47,6 +47,7 @@ export default function Navbar() {
   const NavLinks = () => (
     <>
       <Link href="/" className="nav-link">Trang chủ</Link>
+      <Link href="/instructions" className="nav-link">Hướng dẫn</Link>
       {user && (
         <>
           <Link href="/profile" className="nav-link">Thông tin cá nhân</Link>

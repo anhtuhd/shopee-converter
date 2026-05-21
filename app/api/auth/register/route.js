@@ -25,8 +25,9 @@ export async function POST(request) {
     }
 
     if (username) {
+      username = username.toLowerCase();
       if (!validateUsername(username)) {
-        return NextResponse.json({ error: 'Tên đăng nhập chỉ được chứa chữ cái thường và số, không có ký tự đặc biệt' }, { status: 400 });
+        return NextResponse.json({ error: 'Tên đăng nhập chỉ được chứa chữ cái và số, không có ký tự đặc biệt' }, { status: 400 });
       }
     } else {
       // Auto-generate username
@@ -52,8 +53,8 @@ export async function POST(request) {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Insert user
-    await db.execute('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)', [username, email, passwordHash]);
+    // Insert user - luôn luôn set commission_rate là 0.50 cho user mới tạo
+    await db.execute('INSERT INTO users (username, email, password_hash, commission_rate) VALUES (?, ?, ?, 0.50)', [username, email, passwordHash]);
 
     return NextResponse.json({ message: 'Đăng ký thành công', username }, { status: 201 });
   } catch (error) {
