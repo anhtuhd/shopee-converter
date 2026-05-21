@@ -63,13 +63,13 @@ export async function POST(request) {
     const userRates = {};
     userRows.forEach(u => { userRates[u.username] = parseFloat(u.commission_rate) || 0.50; });
 
-    // Lấy toàn bộ order_id + item_id đã tồn tại — tránh N+1 query trong vòng lặp
-    const [existingRows] = await db.execute('SELECT id, order_id, item_id FROM orders');
+    // Lấy toàn bộ order_id + item_id đã tồn tại cùng trạng thái — tránh N+1 query trong vòng lặp
+    const [existingRows] = await db.execute('SELECT id, order_id, item_id, status FROM orders');
     const existingMap = new Map();
-    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}`, r.id));
+    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}`, { id: r.id, status: r.status }));
 
-    const toInsert = [];
-    const toUpdate = [];
+    const toInsertMap = new Map();
+    const toUpdateMap = new Map();
 
     for (const record of finalRecords) {
       const order_id = record['ID đơn hàng'];
@@ -100,25 +100,33 @@ export async function POST(request) {
       const user_commission = total_commission * rate;
 
       const key = `${order_id}__${item_id}`;
-      const existingId = existingMap.get(key);
+      const existing = existingMap.get(key);
 
-      if (existingId) {
-        toUpdate.push([
-          status, checkout_id, order_time, completed_time, click_time,
-          shop_name, shop_id, item_name, product_type, price, quantity,
-          order_value, total_commission, user_commission,
-          sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel,
-          existingId
-        ]);
+      if (existing) {
+        // Nếu trạng thái trong DB đã là 'Đã thanh toán', bỏ qua không update bất kỳ thông tin nào
+        if (existing.status === 'Đã thanh toán') {
+          continue;
+        }
+        // Trường hợp trùng key, chỉ cập nhật trạng thái đơn hàng
+        toUpdateMap.set(existing.id, status);
       } else {
-        toInsert.push([
-          order_id, status, checkout_id, order_time, completed_time, click_time,
-          shop_name, shop_id, item_id, item_name, product_type, price, quantity,
-          order_value, total_commission, user_commission,
-          sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
-        ]);
+        // Nếu trùng key ngay trong cùng một file upload, chỉ cập nhật trạng thái
+        if (toInsertMap.has(key)) {
+          const insertRow = toInsertMap.get(key);
+          insertRow[1] = status; // Vị trí 1 tương ứng với cột status trong mảng insert
+        } else {
+          toInsertMap.set(key, [
+            order_id, status, checkout_id, order_time, completed_time, click_time,
+            shop_name, shop_id, item_id, item_name, product_type, price, quantity,
+            order_value, total_commission, user_commission,
+            sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
+          ]);
+        }
       }
     }
+
+    const toInsert = Array.from(toInsertMap.values());
+    const toUpdate = Array.from(toUpdateMap.entries());
 
     // Bulk INSERT — một câu query thay vì N câu query
     if (toInsert.length > 0) {
@@ -136,19 +144,14 @@ export async function POST(request) {
       );
     }
 
-    // Bulk UPDATE — xử lý từng batch 50 record để tránh query quá lớn
+    // Bulk UPDATE — chỉ cập nhật cột status cho các đơn trùng key (trừ đã thanh toán)
     const BATCH_SIZE = 50;
     for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
       const batch = toUpdate.slice(i, i + BATCH_SIZE);
-      for (const params of batch) {
+      for (const [id, status] of batch) {
         await db.execute(`
-          UPDATE orders SET
-            status=?, checkout_id=?, order_time=?, completed_time=?, click_time=?,
-            shop_name=?, shop_id=?, item_name=?, product_type=?, price=?, quantity=?,
-            order_value=?, total_commission=?, user_commission=?,
-            sub_id1=?, sub_id2=?, sub_id3=?, sub_id4=?, sub_id5=?, channel=?
-          WHERE id=?
-        `, params);
+          UPDATE orders SET status = ? WHERE id = ?
+        `, [status, id]);
       }
     }
 
