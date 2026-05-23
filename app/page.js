@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [link, setLink] = useState('');
@@ -8,17 +9,28 @@ export default function Home() {
   const [productInfo, setProductInfo] = useState(null);
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    // Fetch user on mount to use in conversion logic
-    fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(data => {
-        if (data.authenticated) setUser(data.username);
+    // Fetch profile on mount to use in conversion logic and stats dashboard
+    fetch('/api/profile')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Not authenticated');
       })
-      .catch(() => {});
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
+          setOrders(data.orders || []);
+        }
+      })
+      .catch(() => {
+        setUser(null);
+        setOrders([]);
+      });
   }, []);
 
   const handleClear = () => {
@@ -63,7 +75,7 @@ export default function Home() {
       }
 
       const affiliateId = user ? (data.affiliateId || '17399820370') : (data.guestAffiliateId || '17399820370');
-      const subId = user || '';
+      const subId = user ? user.username : '';
       const encodedLink = encodeURIComponent(data.finalLink);
 
       const result = `https://s.shopee.vn/an_redir?utm_medium=affiliates&affiliate_id=${affiliateId}&sub_id=${subId}&origin_link=${encodedLink}`;
@@ -122,8 +134,13 @@ export default function Home() {
     window.open(convertedLink, '_blank');
   };
 
+  // Calculate total pending and total paid
+  const totalCompleted = orders.filter(o => o.status === 'Hoàn thành').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
+  const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
+
   return (
     <div className="main-container">
+
       <h1 className="logo-text">
         <span style={{ color: '#4285f4' }}>S</span>
         <span style={{ color: '#ea4335' }}>h</span>
@@ -132,7 +149,7 @@ export default function Home() {
         <span style={{ color: '#34a853' }}>e</span>
         <span style={{ color: '#ea4335' }}>e</span>
       </h1>
-      
+
       <form onSubmit={handleConvert} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div className="search-box">
           <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: '#9aa0a6', width: '20px', height: '20px', marginRight: '12px' }}>
@@ -153,8 +170,71 @@ export default function Home() {
             </button>
           )}
         </div>
+
+        {user && !user.bank_qr && (
+          <div className="qr-warning-banner" style={{
+            marginTop: '-18px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#d93025',
+            backgroundColor: '#fce8e6',
+            padding: '10px 18px',
+            borderRadius: '24px',
+            fontSize: '13px',
+            fontWeight: '500',
+            border: '1px solid #fad2cf',
+            maxWidth: '584px',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            <svg viewBox="0 0 24 24" style={{ fill: '#d93025', width: '18px', height: '18px', flexShrink: 0 }}>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+            </svg>
+            <span style={{ textAlign: 'left' }}>
+              <strong>Lưu ý:</strong> Bạn chưa cập nhật QR code ngân hàng. Hãy{' '}
+              <a href="/profile" style={{ color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}>
+                cập nhật thông tin thanh toán
+              </a>{' '}
+              để được tự động nhận hoàn tiền vào ngày 15 hàng tháng.
+            </span>
+          </div>
+        )}
         
         {error && <div className="error-message" style={{ marginBottom: '20px' }}>{error}</div>}
+
+        {user && (
+          <div className="home-stats-bar" style={{ marginBottom: '10px' }}>
+            {/* Stat 1: Total Orders */}
+            <div className="home-stats-item" onClick={() => router.push('/history?tab=purchases')}>
+              <svg viewBox="0 0 24 24" style={{ fill: 'currentColor', width: '16px', height: '16px' }}>
+                <path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12z" />
+              </svg>
+              <span>Đơn hàng: <strong style={{ color: '#202124' }}>{orders.length}</strong></span>
+            </div>
+
+            <div className="home-stats-divider"></div>
+
+            {/* Stat 2: Pending Refund */}
+            <div className="home-stats-item pending" onClick={() => router.push('/history?tab=payments')}>
+              <svg viewBox="0 0 24 24" style={{ fill: 'currentColor', width: '16px', height: '16px' }}>
+                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm3.3 11.5c0 2.2-1.9 2.5-3.3 2.5v1.5h-1.5V16H9v-1.5h3.5v-1H9.5c-2.2 0-2.5-1.9-2.5-3.3V9.5c0-2.2 1.9-2.5 3.3-2.5V5.5h1.5V7H15v1.5h-3.5v1h3c2.2 0 2.5 1.9 2.5 3.3v.7z" />
+              </svg>
+              <span>Đang xử lý: <strong style={{ color: '#202124' }}>{totalCompleted.toLocaleString('vi-VN')} đ</strong></span>
+            </div>
+
+            <div className="home-stats-divider"></div>
+
+            {/* Stat 3: Paid Refund */}
+            <div className="home-stats-item paid" onClick={() => router.push('/history?tab=payments')}>
+              <svg viewBox="0 0 24 24" style={{ fill: 'currentColor', width: '16px', height: '16px' }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+              <span>Đã nhận: <strong style={{ color: '#202124' }}>{totalPaid.toLocaleString('vi-VN')} đ</strong></span>
+            </div>
+          </div>
+        )}
 
         <div>
           <button type="submit" className="btn-convert" disabled={loading}>

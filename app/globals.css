@@ -621,3 +621,63 @@ header {
     font-size: 11px;
   }
 }
+
+/* Compact Stats Bar on Home Page */
+.home-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 584px;
+  padding: 8px 0;
+  background-color: transparent;
+  border: none;
+  margin-bottom: 25px;
+  box-sizing: border-box;
+  font-size: 13px;
+  color: var(--secondary-text);
+  transition: all 0.3s ease;
+}
+
+.home-stats-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.home-stats-item:hover {
+  color: var(--primary-color);
+}
+
+.home-stats-item.pending:hover {
+  color: #b06000;
+}
+
+.home-stats-item.paid:hover {
+  color: #137333;
+}
+
+.home-stats-divider {
+  width: 1px;
+  height: 14px;
+  background-color: var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .home-stats-bar {
+    max-width: 100%;
+    padding: 6px 0;
+    margin-bottom: 15px;
+    justify-content: center; /* Canh giữa đối với màn hình nhỏ */
+    gap: 12px;
+    border-bottom: none;
+  }
+  
+  .home-stats-divider {
+    height: 10px;
+  }
+}
+

@@ -228,6 +228,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRemindUser = async (userId) => {
+    if (!confirm('Gửi email nhắc nhở user cập nhật thông tin còn thiếu?')) return;
+    try {
+      const res = await fetch('/api/admin/users/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Đã gửi email nhắc nhở thành công!');
+      } else {
+        alert(data.error || 'Lỗi khi gửi email nhắc nhở');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    }
+  };
+
   const handleMarkPaid = async (username) => {
     if (!confirm(`Xác nhận đã thanh toán cho user ${username}? Hệ thống sẽ đánh dấu tất cả các đơn 'Hoàn thành' trước ngày ${cutoffDate} là 'Đã thanh toán'.`)) return;
     
@@ -306,12 +325,14 @@ export default function AdminDashboard() {
           <div>
             <h3 style={{ marginBottom: '16px' }}>Danh sách người dùng</h3>
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
                     <th style={{ padding: '12px 8px' }}>ID</th>
                     <th style={{ padding: '12px 8px' }}>Username</th>
                     <th style={{ padding: '12px 8px' }}>Họ Tên</th>
+                    <th style={{ padding: '12px 8px' }}>Số điện thoại</th>
+                    <th style={{ padding: '12px 8px' }}>QR Code</th>
                     <th style={{ padding: '12px 8px' }}>Tỷ lệ hoa hồng</th>
                     <th style={{ padding: '12px 8px' }}>Quyền</th>
                     <th style={{ padding: '12px 8px' }}>Thao tác</th>
@@ -319,13 +340,25 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Chưa có dữ liệu.</td></tr>
+                    <tr><td colSpan="8" style={{ padding: '20px', textAlign: 'center' }}>Chưa có dữ liệu.</td></tr>
                   ) : (
                     users.map((u, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '12px 8px' }}>{u.id}</td>
                         <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{u.username}</td>
-                        <td style={{ padding: '12px 8px' }}>{u.full_name}</td>
+                        <td style={{ padding: '12px 8px' }}>{u.full_name || '-'}</td>
+                        <td style={{ padding: '12px 8px' }}>{u.phone || '-'}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {u.bank_qr ? (
+                            <a href={u.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
+                              Xem mã QR
+                            </a>
+                          ) : (
+                            <span style={{ color: '#ea4335', fontSize: '12px', background: '#fce8e6', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                              Chưa cập nhật
+                            </span>
+                          )}
+                        </td>
                         <td style={{ padding: '12px 8px' }}>
                           <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{(u.commission_rate * 100).toFixed(0)}%</span>
                         </td>
@@ -333,9 +366,27 @@ export default function AdminDashboard() {
                           <span className={`status-badge ${u.role === 'admin' ? 'status-hoàn-thành' : 'status-đã-hủy'}`}>{u.role}</span>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
-                          <button onClick={() => handleUpdateCommission(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
-                            Sửa tỷ lệ
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button onClick={() => handleUpdateCommission(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
+                              Sửa tỷ lệ
+                            </button>
+                            {(!u.bank_qr || !u.full_name || !u.phone) && (
+                              <button 
+                                onClick={() => handleRemindUser(u.id)} 
+                                className="btn-primary" 
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  fontSize: '12px', 
+                                  backgroundColor: '#fbbc05', 
+                                  borderColor: '#fbbc05', 
+                                  color: '#202124',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                Nhắc cập nhật
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -411,12 +462,14 @@ export default function AdminDashboard() {
 
             <h3 style={{ marginBottom: '16px' }}>Danh sách đơn hàng hệ thống</h3>
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1200px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
                     <th style={{ padding: '12px 8px' }}>Mã Đơn</th>
                     <th style={{ padding: '12px 8px' }}>Username</th>
-                    <th style={{ padding: '12px 8px' }}>Thời gian</th>
+                    <th style={{ padding: '12px 8px', minWidth: '180px' }}>Tên sản phẩm</th>
+                    <th style={{ padding: '12px 8px' }}>Thời gian đặt hàng</th>
+                    <th style={{ padding: '12px 8px' }}>Thời gian hoàn thành</th>
                     <th style={{ padding: '12px 8px' }}>HH Shopee</th>
                     <th style={{ padding: '12px 8px' }}>HH User</th>
                     <th style={{ padding: '12px 8px' }}>Trạng thái</th>
@@ -425,13 +478,30 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có đơn hàng nào.</td></tr>
+                    <tr><td colSpan="9" style={{ padding: '20px', textAlign: 'center' }}>Chưa có đơn hàng nào.</td></tr>
                   ) : (
                     orders.map((o, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ padding: '12px 8px' }}>{o.order_id}</td>
                         <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{o.sub_id1 || '-'}</td>
-                        <td style={{ padding: '12px 8px' }}>{new Date(o.order_time).toLocaleString('vi-VN')}</td>
+                        <td 
+                          style={{ 
+                            padding: '12px 8px', 
+                            maxWidth: '250px', 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis' 
+                          }}
+                          title={o.item_name}
+                        >
+                          {o.item_name || '-'}
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {o.order_time ? new Date(o.order_time).toLocaleString('vi-VN') : '-'}
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {o.completed_time ? new Date(o.completed_time).toLocaleString('vi-VN') : '-'}
+                        </td>
                         <td style={{ padding: '12px 8px', color: '#666', fontSize: '13px' }}>{Number(o.total_commission).toLocaleString('vi-VN')} đ</td>
                         <td style={{ padding: '12px 8px', color: '#34a853', fontWeight: 'bold' }}>{Number(o.user_commission || 0).toLocaleString('vi-VN')} đ</td>
                         <td style={{ padding: '12px 8px' }}>
