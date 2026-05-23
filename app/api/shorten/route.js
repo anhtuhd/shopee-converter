@@ -53,7 +53,16 @@ export async function POST(request) {
     await db.execute('INSERT INTO short_links (code, long_url) VALUES (?, ?)', [code, longUrl]);
 
     // Lấy origin của request hiện tại để xây dựng link rút gọn động (hỗ trợ cả local và production)
-    const origin = new URL(request.url).origin;
+    let origin = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!origin) {
+      const protocol = request.headers.get('x-forwarded-proto') || 'http';
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+      if (host) {
+        origin = `${protocol}://${host}`;
+      } else {
+        origin = new URL(request.url).origin;
+      }
+    }
     const shortUrl = `${origin}/${code}`;
 
     return NextResponse.json({ code, shortUrl, longUrl }, { status: 200 });
