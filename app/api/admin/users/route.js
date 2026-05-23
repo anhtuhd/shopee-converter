@@ -27,7 +27,7 @@ export async function GET(request) {
 
   try {
     const db = await getConnection();
-    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, role, commission_rate, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
+    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
     const [countRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     
     return NextResponse.json({

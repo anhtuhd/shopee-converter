@@ -49,3 +49,10 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_order_item_model (order_id, item_id, model_id)
 );
+
+CREATE TABLE IF NOT EXISTS short_links (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(8) NOT NULL UNIQUE,
+    long_url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -20,7 +20,14 @@ export default function Instructions() {
         </svg>
       ),
       title: '2. Tag Shopee Video & Live',
-      desc: 'Lưu ý cực kỳ quan trọng: Các sản phẩm được đặt mua có gắn tag "Shopee Video" hoặc "Shopee Live" sẽ KHÔNG ĐƯỢC ghi nhận hoa hồng hoàn tiền từ đối tác tiếp thị liên kết.',
+      desc: (
+        <span>
+          Lưu ý cực kỳ quan trọng: Các sản phẩm được đặt mua có gắn tag{' '}
+          <strong style={{ color: '#ea4335' }}>"Shopee Video"</strong> hoặc{' '}
+          <strong style={{ color: '#ea4335' }}>"Shopee Live"</strong> sẽ{' '}
+          <strong style={{ color: '#ea4335', textDecoration: 'underline' }}>KHÔNG ĐƯỢC</strong> ghi nhận hoa hồng hoàn tiền từ đối tác tiếp thị liên kết.
+        </span>
+      ),
     },
     {
       icon: (
@@ -38,7 +45,13 @@ export default function Instructions() {
         </svg>
       ),
       title: '4. Chu kỳ đối soát & Thanh toán',
-      desc: 'Toàn bộ hoa hồng tích lũy hợp lệ của bạn sẽ được hệ thống tổng hợp đối soát và tự động chuyển khoản thanh toán vào ngày 15 hàng tháng qua tài khoản ngân hàng từ mã QR bạn cung cấp.',
+      desc: (
+        <span>
+          Toàn bộ hoa hồng tích lũy hợp lệ của bạn sẽ được hệ thống tổng hợp đối soát và tự động chuyển khoản thanh toán vào ngày 15 hàng tháng qua tài khoản ngân hàng từ mã QR bạn cung cấp.
+          <br />
+          <strong style={{ color: '#1a73e8' }}>Lưu ý:</strong> Các đơn hàng mới mua sẽ được cập nhật tại tab Lịch sử đơn hàng vào ngày hôm sau.
+        </span>
+      ),
     },
   ];
 

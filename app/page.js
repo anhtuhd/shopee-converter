@@ -80,7 +80,24 @@ export default function Home() {
 
       const result = `https://s.shopee.vn/an_redir?utm_medium=affiliates&affiliate_id=${affiliateId}&sub_id=${subId}&origin_link=${encodedLink}`;
       
-      setConvertedLink(result);
+      try {
+        const shortenRes = await fetch('/api/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ longUrl: result })
+        });
+        const shortenData = await shortenRes.json();
+        
+        if (shortenRes.ok && shortenData.shortUrl) {
+          setConvertedLink(shortenData.shortUrl);
+        } else {
+          setConvertedLink(result);
+        }
+      } catch (shortenErr) {
+        console.error('Lỗi khi rút gọn link, dùng link dài:', shortenErr);
+        setConvertedLink(result);
+      }
+      
       setProductInfo(data);
     } catch (err) {
       console.error(err);
