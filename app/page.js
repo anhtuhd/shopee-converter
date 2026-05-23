@@ -53,8 +53,14 @@ export default function Home() {
       return;
     }
 
-    if (!link.startsWith('https://vn.shp.ee/') && !link.startsWith('https://s.shopee.vn/')) {
-      setError('Link không hợp lệ. Vui lòng nhập link dạng https://vn.shp.ee/... hoặc https://s.shopee.vn/...');
+    const trimmedLink = link.trim();
+    if (
+      !trimmedLink.startsWith('https://vn.shp.ee/') && 
+      !trimmedLink.startsWith('https://s.shopee.vn/') && 
+      !trimmedLink.startsWith('https://shopee.vn/') && 
+      !trimmedLink.startsWith('https://shope.ee/')
+    ) {
+      setError('Link không hợp lệ. Vui lòng nhập link Shopee hợp lệ (ví dụ: https://vn.shp.ee/..., https://s.shopee.vn/..., hoặc https://shopee.vn/...)');
       return;
     }
 
@@ -175,7 +181,7 @@ export default function Home() {
           <input 
             type="text" 
             className="search-input" 
-            placeholder="Nhập link shopee (vd: https://vn.shp.ee/...)" 
+            placeholder="Nhập link shopee (vd: https://vn.shp.ee/... hoặc https://shopee.vn/...)" 
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
