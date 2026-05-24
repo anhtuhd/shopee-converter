@@ -87,6 +87,12 @@ export default function Navbar() {
         </svg>
       </button>
 
+      {/* Brand Logo & Name */}
+      <Link href="/" className="navbar-brand">
+        <img src="/logo.jpg" alt="PiShare Logo" className="brand-logo" />
+        <span className="brand-name">PiShare</span>
+      </Link>
+
       {/* Mobile Auth Container (Visible only on mobile) */}
       <div className="mobile-auth-container">
         <AuthLinks />

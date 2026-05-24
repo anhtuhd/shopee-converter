@@ -174,14 +174,34 @@ export default function Home() {
   return (
     <div className="main-container">
 
-      <h1 className="logo-text">
-        <span style={{ color: '#4285f4' }}>S</span>
-        <span style={{ color: '#ea4335' }}>h</span>
-        <span style={{ color: '#fbbc05' }}>o</span>
-        <span style={{ color: '#4285f4' }}>p</span>
-        <span style={{ color: '#34a853' }}>e</span>
-        <span style={{ color: '#ea4335' }}>e</span>
-      </h1>
+      <div className="home-brand-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px', gap: '12px', textAlign: 'center' }}>
+        <img 
+          src="/logo.jpg" 
+          alt="PiShare Logo" 
+          style={{ 
+            width: '120px', 
+            height: '120px', 
+            borderRadius: '50%', 
+            boxShadow: '0 10px 30px rgba(26, 115, 232, 0.15)',
+            border: '4px solid white',
+            background: 'white'
+          }} 
+        />
+        <h1 style={{ 
+          fontSize: '42px', 
+          fontWeight: '800', 
+          margin: '0',
+          background: 'linear-gradient(135deg, #1a73e8, #34a853)', 
+          WebkitBackgroundClip: 'text', 
+          WebkitTextFillColor: 'transparent', 
+          letterSpacing: '-1.5px' 
+        }}>
+          PiShare
+        </h1>
+        <p style={{ fontSize: '15px', color: '#5f6368', marginTop: '-4px', maxWidth: '480px', lineHeight: '1.5' }}>
+          Hệ thống chuyển đổi link Shopee Affiliate chuyên nghiệp & nhận hoàn tiền tự động
+        </p>
+      </div>
 
       <form onSubmit={handleConvert} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div className="search-box">
