@@ -42,6 +42,10 @@ export default function AdminDashboard() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`;
   });
   const [payoutStatus, setPayoutStatus] = useState('');
+  
+  // Bills History
+  const [bills, setBills] = useState([]);
+  const [billsStatus, setBillsStatus] = useState('');
 
   // Filters
   const [filterStatus, setFilterStatus] = useState('');
@@ -131,11 +135,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchBills = async () => {
+    try {
+      setBillsStatus('Đang tải lịch sử thanh toán...');
+      const res = await fetch('/api/admin/payouts?type=bills');
+      const data = await res.json();
+      if (res.ok) {
+        setBills(data.bills || []);
+        setBillsStatus('');
+      } else {
+        setBillsStatus(data.error || 'Lỗi khi tải lịch sử thanh toán');
+      }
+    } catch (err) {
+      setBillsStatus('Lỗi kết nối');
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'payouts') {
       fetchPayouts();
     } else if (activeTab === 'bonuses') {
       fetchBonuses();
+    } else if (activeTab === 'bills') {
+      fetchBills();
     }
   }, [activeTab, cutoffDate]);
 
@@ -444,6 +466,12 @@ export default function AdminDashboard() {
           Tổng hợp Thanh toán
         </button>
         <button 
+          className={`tab-btn ${activeTab === 'bills' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bills')}
+        >
+          Lịch sử Bill đã trả
+        </button>
+        <button 
           className={`tab-btn ${activeTab === 'bonuses' ? 'active' : ''}`}
           onClick={() => setActiveTab('bonuses')}
         >
@@ -745,6 +773,82 @@ export default function AdminDashboard() {
                           <button onClick={() => handleMarkPaid(p.username)} className="btn-primary" style={{ padding: '6px 12px', fontSize: '13px' }}>
                             Đã thanh toán xong
                           </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'bills' && (
+          <div>
+            <div style={{ marginBottom: '24px', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', background: '#f8f9fa' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ marginBottom: '8px' }}>Lịch sử Bill đã thanh toán</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--secondary-text)' }}>Danh sách các hóa đơn/bill đã được thanh toán cho người dùng (lưu trữ độc lập).</p>
+                </div>
+                <button onClick={fetchBills} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '13px' }}>
+                  Làm mới dữ liệu
+                </button>
+              </div>
+            </div>
+
+            {billsStatus && <div style={{ textAlign: 'center', padding: '20px', color: 'var(--secondary-text)' }}>{billsStatus}</div>}
+
+            <div className="table-container" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1100px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                    <th style={{ padding: '12px 8px' }}>Mã Hóa Đơn</th>
+                    <th style={{ padding: '12px 8px' }}>Username</th>
+                    <th style={{ padding: '12px 8px' }}>Họ Tên / Điện thoại</th>
+                    <th style={{ padding: '12px 8px' }}>Thông tin Bank (QR)</th>
+                    <th style={{ padding: '12px 8px' }}>Số đơn hàng</th>
+                    <th style={{ padding: '12px 8px' }}>Hoa hồng cá nhân</th>
+                    <th style={{ padding: '12px 8px' }}>Thưởng giới thiệu</th>
+                    <th style={{ padding: '12px 8px' }}>Tổng thanh toán</th>
+                    <th style={{ padding: '12px 8px' }}>Ngày chốt đối soát</th>
+                    <th style={{ padding: '12px 8px' }}>Thời gian trả</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bills.length === 0 ? (
+                    <tr><td colSpan="10" style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Chưa có hóa đơn thanh toán nào được lưu trữ.</td></tr>
+                  ) : (
+                    bills.map((b, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '12px 8px', fontWeight: '500', color: '#1a73e8' }}>#{b.id}</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{b.username}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div style={{ fontWeight: '500' }}>{b.full_name || '-'}</div>
+                          <div style={{ fontSize: '11px', color: '#666' }}>{b.phone || '-'}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {b.bank_qr ? (
+                            <a href={b.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px', textDecoration: 'underline' }}>Xem mã QR</a>
+                          ) : (
+                            <span style={{ color: '#ccc', fontSize: '12px' }}>Không có QR</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>{b.order_count} đơn</td>
+                        <td style={{ padding: '12px 8px', color: b.personal_payout < 0 ? '#ea4335' : '#34a853', fontWeight: b.personal_payout < 0 ? 'bold' : 'normal' }}>
+                          {Number(b.personal_payout).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px', color: b.referral_payout < 0 ? '#ea4335' : '#34a853', fontWeight: b.referral_payout < 0 ? 'bold' : 'normal' }}>
+                          {Number(b.referral_payout).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px', fontWeight: 'bold', color: b.total_payout < 0 ? '#ea4335' : '#1e8e3e', fontSize: '16px' }}>
+                          {Number(b.total_payout).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px', fontSize: '13px', color: '#5f6368' }}>
+                          {b.cutoff_date ? new Date(b.cutoff_date).toLocaleDateString('vi-VN') : '-'}
+                        </td>
+                        <td style={{ padding: '12px 8px', fontSize: '13px', color: '#5f6368' }}>
+                          {b.created_at ? new Date(b.created_at).toLocaleString('vi-VN') : '-'}
                         </td>
                       </tr>
                     ))

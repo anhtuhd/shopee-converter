@@ -80,18 +80,21 @@ export default function Navbar() {
 
   return (
     <header className="main-header">
-      {/* Mobile Hamburger Button */}
-      <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
-        <svg focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path>
-        </svg>
-      </button>
+      {/* Left section: Hamburger & Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Mobile Hamburger Button */}
+        <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+          <svg focusable="false" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path>
+          </svg>
+        </button>
 
-      {/* Brand Logo & Name */}
-      <Link href="/" className="navbar-brand">
-        <img src="/logo.jpg" alt="PiShare Logo" className="brand-logo" />
-        <span className="brand-name">PiShare</span>
-      </Link>
+        {/* Brand Logo & Name */}
+        <Link href="/" className="navbar-brand">
+          <img src="/logo.jpg" alt="PiShare Logo" className="brand-logo" />
+          <span className="brand-name">PiShare</span>
+        </Link>
+      </div>
 
       {/* Mobile Auth Container (Visible only on mobile) */}
       <div className="mobile-auth-container">

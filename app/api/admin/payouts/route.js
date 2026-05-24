@@ -21,6 +21,25 @@ export async function GET(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
+  const type = searchParams.get('type');
+
+  // Lấy lịch sử các Bill đã trả từ bảng payout_bills
+  if (type === 'bills' || type === 'history') {
+    try {
+      const db = await getConnection();
+      const [rows] = await db.execute(`
+        SELECT pb.*, u.full_name, u.phone, u.bank_qr 
+        FROM payout_bills pb 
+        LEFT JOIN users u ON pb.user_id = u.id 
+        ORDER BY pb.created_at DESC
+      `);
+      return NextResponse.json({ bills: rows });
+    } catch (error) {
+      console.error('Fetch payout bills error:', error);
+      return NextResponse.json({ error: 'Database error' }, { status: 500 });
+    }
+  }
+
   const cutoffDate = searchParams.get('cutoffDate'); // YYYY-MM-DD
 
   if (!cutoffDate) {
@@ -30,8 +49,7 @@ export async function GET(request) {
   try {
     const db = await getConnection();
     
-    // Group by user and sum user_commission for orders with status 'Hoàn thành' before cutoffDate
-    // Also join with users table to get payment info
+    // Group by user and sum user_commission (deducting refunded ones) for orders with status 'Hoàn thành' or 'Yêu cầu khấu trừ' before cutoffDate
     const query = `
       SELECT 
         u.id, u.username, u.full_name, u.phone, u.bank_qr,
@@ -41,14 +59,20 @@ export async function GET(request) {
         (COALESCE(p.personal_count, 0) + COALESCE(r.referral_count, 0)) as order_count
       FROM users u
       LEFT JOIN (
-        SELECT sub_id1 as username, SUM(user_commission) as personal_payout, COUNT(id) as personal_count
-        FROM orders WHERE status = 'Hoàn thành' AND COALESCE(completed_time, order_time) <= ? GROUP BY sub_id1
+        SELECT sub_id1 as username, 
+               SUM(CASE WHEN status = 'Hoàn thành' THEN user_commission WHEN status = 'Yêu cầu khấu trừ' THEN -user_commission ELSE 0 END) as personal_payout, 
+               COUNT(id) as personal_count
+        FROM orders 
+        WHERE status IN ('Hoàn thành', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ? GROUP BY sub_id1
       ) p ON u.username = p.username
       LEFT JOIN (
-        SELECT referrer_id, SUM(referrer_commission) as referral_payout, COUNT(id) as referral_count
-        FROM orders WHERE status IN ('Hoàn thành', 'Đã thanh toán') AND referrer_payout_status = 'Đang chờ' AND COALESCE(completed_time, order_time) <= ? GROUP BY referrer_id
+        SELECT referrer_id, 
+               SUM(CASE WHEN referrer_payout_status = 'Đang chờ' THEN referrer_commission WHEN referrer_payout_status = 'Yêu cầu khấu trừ' THEN -referrer_commission ELSE 0 END) as referral_payout, 
+               COUNT(id) as referral_count
+        FROM orders 
+        WHERE status IN ('Hoàn thành', 'Đã thanh toán', 'Yêu cầu khấu trừ') AND referrer_payout_status IN ('Đang chờ', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ? GROUP BY referrer_id
       ) r ON u.id = r.referrer_id
-      WHERE p.personal_payout > 0 OR r.referral_payout > 0
+      WHERE p.personal_payout <> 0 OR r.referral_payout <> 0
       ORDER BY total_payout DESC
     `;
 
@@ -81,16 +105,22 @@ export async function POST(request) {
     const user = userRows[0];
     const userId = user ? user.id : 0;
 
-    // 2. Lấy thống kê số lượng đơn và tổng tiền trước khi update (cả hoa hồng cá nhân và hoa hồng giới thiệu)
+    // 2. Lấy thống kê số lượng đơn và tổng tiền trước khi update (khấu trừ các đơn hàng Trả hàng / Hoàn hủy)
     const [personalStats] = await db.execute(
-      "SELECT COUNT(id) as orderCount, SUM(user_commission) as totalPayout FROM orders WHERE sub_id1 = ? AND status = 'Hoàn thành' AND COALESCE(completed_time, order_time) <= ?",
+      `SELECT COUNT(id) as orderCount, 
+              SUM(CASE WHEN status = 'Hoàn thành' THEN user_commission WHEN status = 'Yêu cầu khấu trừ' THEN -user_commission ELSE 0 END) as totalPayout 
+       FROM orders 
+       WHERE sub_id1 = ? AND status IN ('Hoàn thành', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ?`,
       [username, cutoffDate + ' 23:59:59']
     );
     const personalCount = parseInt(personalStats[0]?.orderCount || 0);
     const personalPayout = parseFloat(personalStats[0]?.totalPayout || 0);
 
     const [referralStats] = await db.execute(
-      "SELECT COUNT(id) as orderCount, SUM(referrer_commission) as totalPayout FROM orders WHERE referrer_id = ? AND status IN ('Hoàn thành', 'Đã thanh toán') AND referrer_payout_status = 'Đang chờ' AND COALESCE(completed_time, order_time) <= ?",
+      `SELECT COUNT(id) as orderCount, 
+              SUM(CASE WHEN referrer_payout_status = 'Đang chờ' THEN referrer_commission WHEN referrer_payout_status = 'Yêu cầu khấu trừ' THEN -referrer_commission ELSE 0 END) as totalPayout 
+       FROM orders 
+       WHERE referrer_id = ? AND status IN ('Hoàn thành', 'Đã thanh toán', 'Yêu cầu khấu trừ') AND referrer_payout_status IN ('Đang chờ', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ?`,
       [userId, cutoffDate + ' 23:59:59']
     );
     const referralCount = parseInt(referralStats[0]?.orderCount || 0);
@@ -99,21 +129,30 @@ export async function POST(request) {
     const orderCount = personalCount + referralCount;
     const totalPayout = personalPayout + referralPayout;
 
-    // Cập nhật trạng thái hoa hồng cá nhân thành 'Đã thanh toán'
+    // Cập nhật trạng thái hoa hồng cá nhân thành 'Đã thanh toán' (cho cả đơn thành công và đơn yêu cầu khấu trừ)
     const [personalResult] = await db.execute(
-      "UPDATE orders SET status = 'Đã thanh toán' WHERE sub_id1 = ? AND status = 'Hoàn thành' AND COALESCE(completed_time, order_time) <= ?",
+      "UPDATE orders SET status = 'Đã thanh toán' WHERE sub_id1 = ? AND status IN ('Hoàn thành', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ?",
       [username, cutoffDate + ' 23:59:59']
     );
 
     // Cập nhật trạng thái hoa hồng giới thiệu thành 'Đã thanh toán'
     const [referralResult] = await db.execute(
-      "UPDATE orders SET referrer_payout_status = 'Đã thanh toán' WHERE referrer_id = ? AND status IN ('Hoàn thành', 'Đã thanh toán') AND referrer_payout_status = 'Đang chờ' AND COALESCE(completed_time, order_time) <= ?",
+      "UPDATE orders SET referrer_payout_status = 'Đã thanh toán' WHERE referrer_id = ? AND status IN ('Hoàn thành', 'Đã thanh toán', 'Yêu cầu khấu trừ') AND referrer_payout_status IN ('Đang chờ', 'Yêu cầu khấu trừ') AND COALESCE(completed_time, order_time) <= ?",
       [userId, cutoffDate + ' 23:59:59']
     );
 
     const totalAffectedRows = personalResult.affectedRows + referralResult.affectedRows;
 
-    // 3. Nếu cập nhật thành công và user có email, thực hiện gửi thông báo
+    // 3. Ghi chép bill thanh toán vào bảng payout_bills riêng để lưu trữ & thống kê tránh query bảng order
+    if (userId > 0) {
+      await db.execute(`
+        INSERT INTO payout_bills (user_id, username, cutoff_date, order_count, personal_payout, referral_payout, total_payout, payment_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Đã thanh toán')
+      `, [userId, username, cutoffDate + ' 23:59:59', orderCount, personalPayout, referralPayout, totalPayout]);
+      console.log(`✔ Đã lưu vết bill thanh toán thành công cho ${username} với tổng tiền ${totalPayout}đ`);
+    }
+
+    // 4. Nếu cập nhật thành công và user có email, thực hiện gửi thông báo
     if (totalAffectedRows > 0 && user && user.email) {
       try {
         const baseUrl = process.env.BASE_URL || 'https://pishare.site';
@@ -145,7 +184,7 @@ export async function POST(request) {
                     <td style="padding: 6px 0; font-weight: bold; text-align: right;">${orderCount} đơn</td>
                   </tr>
                   <tr style="border-top: 1px solid #e0e0e0;">
-                    <td style="padding: 6px 0; color: #5f6368;">- Hoa hồng cá nhân:</td>
+                    <td style="padding: 6px 0; color: #5f6368;">- Hoa hồng cá nhân (đã trừ hoàn trả):</td>
                     <td style="padding: 6px 0; font-weight: bold; text-align: right;">${Number(personalPayout).toLocaleString('vi-VN')} đ</td>
                   </tr>
                   <tr>
@@ -180,7 +219,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ 
-      message: `Đã cập nhật ${totalAffectedRows} đơn hàng thành 'Đã thanh toán' cho user ${username} và gửi mail thông báo` 
+      message: `Đã cập nhật ${totalAffectedRows} đơn hàng thành 'Đã thanh toán', lưu hóa đơn và gửi mail thông báo` 
     });
   } catch (error) {
     console.error('Payout mark paid error:', error);

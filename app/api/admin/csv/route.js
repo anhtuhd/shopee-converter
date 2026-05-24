@@ -22,6 +22,19 @@ function parseDate(str) {
   return str.trim();
 }
 
+function isCancelledStatus(statusStr) {
+  if (!statusStr) return false;
+  const s = statusStr.trim().toLowerCase();
+  return (
+    s.includes('hủy') || 
+    s.includes('trả hàng') || 
+    s.includes('hoàn tiền') || 
+    s.includes('cancel') || 
+    s.includes('return') || 
+    s.includes('refund')
+  );
+}
+
 export async function POST(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
@@ -169,7 +182,7 @@ export async function POST(request) {
         const batch = orderIds.slice(i, i + batchSize);
         const placeholders = batch.map(() => '?').join(',');
         const [rows] = await db.execute(
-          `SELECT id, order_id, item_id, model_id, status FROM orders WHERE order_id IN (${placeholders})`,
+          `SELECT id, order_id, item_id, model_id, status, referrer_id, referrer_payout_status FROM orders WHERE order_id IN (${placeholders})`,
           batch
         );
         existingRows = existingRows.concat(rows);
@@ -177,7 +190,12 @@ export async function POST(request) {
     }
 
     const existingMap = new Map();
-    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}__${r.model_id || ''}`, { id: r.id, status: r.status }));
+    existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}__${r.model_id || ''}`, { 
+      id: r.id, 
+      status: r.status,
+      referrer_id: r.referrer_id,
+      referrer_payout_status: r.referrer_payout_status
+    }));
 
     const toInsertMap = new Map();
     const toUpdateMap = new Map();
@@ -258,8 +276,19 @@ export async function POST(request) {
       const existing = existingMap.get(key);
 
       if (existing) {
-        // Nếu trạng thái trong DB đã là 'Đã thanh toán', bỏ qua không update bất kỳ thông tin nào
+        // Nếu trạng thái trong DB đã là 'Đã thanh toán', ta kiểm tra xem trạng thái mới từ Shopee có phải là Đã hủy/Trả hàng/Hoàn tiền không
         if (existing.status === 'Đã thanh toán') {
+          if (isCancelledStatus(status)) {
+            toUpdateMap.set(existing.id, 'Yêu cầu khấu trừ');
+            
+            // Nếu người giới thiệu cũng đã nhận hoa hồng 'Đã thanh toán' cho đơn này, ta cũng chuyển thành 'Yêu cầu khấu trừ' để trừ tiền đợt sau
+            if (existing.referrer_id && existing.referrer_payout_status === 'Đã thanh toán') {
+              await db.execute(
+                "UPDATE orders SET referrer_payout_status = 'Yêu cầu khấu trừ' WHERE id = ?",
+                [existing.id]
+              );
+            }
+          }
           continue;
         }
 
