@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { getConnection } from '@/lib/db';
-
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
+import { sendEmail } from '@/lib/email';
 
 export async function POST(request) {
   try {
@@ -48,13 +46,12 @@ export async function POST(request) {
 
     console.log(`✔ Đã tạo lại OTP mới cho ${user.username}: ${newOtp}`);
 
-    // 4. Gửi email chứa OTP mới qua Resend
-    try {
-      const { error: emailError } = await resend.emails.send({
-        from: 'Shopee Affiliate <noreply@pishare.site>',
-        to: cleanEmail,
-        subject: 'Mã xác thực OTP mới kích hoạt tài khoản - Shopee Affiliate',
-        html: `
+    // 4. Gửi email chứa OTP mới (SMTP ưu tiên, Resend dự phòng)
+    await sendEmail({
+      from: 'Shopee Affiliate <noreply@pishare.site>',
+      to: cleanEmail,
+      subject: 'Mã xác thực OTP mới kích hoạt tài khoản - Shopee Affiliate',
+      html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
             <div style="text-align: center; margin-bottom: 20px;">
               <h2 style="color: #1a73e8; margin-top: 0;">Yêu cầu gửi lại mã OTP!</h2>
@@ -74,15 +71,7 @@ export async function POST(request) {
             <p style="font-size: 12px; color: #666; text-align: center; margin: 0;">Hệ thống PiShare.site - Hỗ trợ: anhtudh95@gmail.com - Zalo: 0397872462</p>
           </div>
         `
-      });
-      if (emailError) {
-        console.error('Resend OTP email send error:', emailError);
-      } else {
-        console.log(`✔ Đã gửi email chứa OTP mới tới: ${cleanEmail}`);
-      }
-    } catch (eErr) {
-      console.error('Resend process error:', eErr);
-    }
+    });
 
     return NextResponse.json({ message: 'Mã OTP mới đã được gửi thành công. Vui lòng kiểm tra email.' }, { status: 200 });
 

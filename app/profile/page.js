@@ -287,7 +287,7 @@ export default function Profile() {
                       type="text" 
                       className="form-input" 
                       readOnly 
-                      value={typeof window !== 'undefined' ? `${window.location.origin}/register?ref=${user.username}` : ''} 
+                      value={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://pishare.site'}/register?ref=${user.username}`} 
                       style={{ fontSize: '12px', padding: '6px 10px', height: '32px', flexGrow: 1, background: '#f1f3f4' }} 
                     />
                     <button 
@@ -295,7 +295,7 @@ export default function Profile() {
                       className="btn-primary" 
                       style={{ padding: '6px 12px', fontSize: '12px', height: '32px', borderRadius: '4px', cursor: 'pointer' }}
                       onClick={(e) => {
-                        const linkStr = `${window.location.origin}/register?ref=${user.username}`;
+                        const linkStr = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://pishare.site'}/register?ref=${user.username}`;
                         navigator.clipboard.writeText(linkStr);
                         e.currentTarget.innerText = 'Đã copy!';
                         const btn = e.currentTarget;

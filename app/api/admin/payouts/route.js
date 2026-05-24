@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
-import { Resend } from 'resend';
+import { sendEmail } from '@/lib/email';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
 
 async function checkAdmin(request) {
   const token = request.cookies.get('auth_token')?.value;
@@ -120,7 +119,7 @@ export async function POST(request) {
         const baseUrl = process.env.BASE_URL || 'https://pishare.site';
         const historyUrl = `${baseUrl}/history`;
 
-        await resend.emails.send({
+        await sendEmail({
           from: 'PiShare.site <noreply@pishare.site>',
           to: user.email,
           subject: '[PiShare.site] Thông báo thanh toán hoa hồng thành công',

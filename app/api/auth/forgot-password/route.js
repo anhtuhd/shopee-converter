@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/db';
 import crypto from 'crypto';
-import { Resend } from 'resend';
-
-// Khởi tạo Resend một lần duy nhất khi module load (không tạo lại mỗi request)
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
+import { sendEmail } from '@/lib/email';
 
 export async function POST(request) {
   try {
@@ -39,8 +36,8 @@ export async function POST(request) {
     const baseUrl = process.env.BASE_URL || 'https://pishare.site';
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    // Gửi email bằng Resend
-    const { error } = await resend.emails.send({
+    // Gửi email (SMTP ưu tiên, Resend dự phòng)
+    const { success } = await sendEmail({
       from: 'Shopee Affiliate <noreply@pishare.site>',
       to: email,
       subject: 'Khôi phục mật khẩu - Shopee Affiliate',
@@ -64,9 +61,8 @@ export async function POST(request) {
       `
     });
 
-    if (error) {
-      console.error('Resend Error:', error);
-      return NextResponse.json({ error: 'Không thể gửi email. Vui lòng kiểm tra lại cấu hình Resend.' }, { status: 500 });
+    if (!success) {
+      return NextResponse.json({ error: 'Không thể gửi email. Vui lòng thử lại sau.' }, { status: 500 });
     }
 
     return NextResponse.json({ message: 'Vui lòng kiểm tra email để lấy đường dẫn khôi phục mật khẩu.' }, { status: 200 });

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { Resend } from 'resend';
 import { getConnection } from '@/lib/db';
-
-const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key_for_build');
+import { sendEmail } from '@/lib/email';
 
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,13 +108,12 @@ export async function POST(request) {
       console.log(`✔ Đã tạo mối liên kết giới thiệu: User ID ${newUserId} được giới thiệu bởi User ID ${referrerId}`);
     }
 
-    // Gửi email mã OTP qua Resend
-    try {
-      const { error: emailError } = await resend.emails.send({
-        from: 'Shopee Affiliate <noreply@pishare.site>',
-        to: email,
-        subject: 'Mã xác thực OTP kích hoạt tài khoản - Shopee Affiliate',
-        html: `
+    // Gửi email mã OTP (SMTP ưu tiên, Resend dự phòng)
+    await sendEmail({
+      from: 'Shopee Affiliate <noreply@pishare.site>',
+      to: email,
+      subject: 'Mã xác thực OTP kích hoạt tài khoản - Shopee Affiliate',
+      html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
             <div style="text-align: center; margin-bottom: 20px;">
               <h2 style="color: #1a73e8; margin-top: 0;">Chào mừng bạn đến với PiShare.site!</h2>
@@ -136,15 +133,7 @@ export async function POST(request) {
             <p style="font-size: 12px; color: #666; text-align: center; margin: 0;">Hệ thống PiShare.site - Hỗ trợ: anhtudh95@gmail.com - Zalo: 0397872462</p>
           </div>
         `
-      });
-      if (emailError) {
-        console.error('Verify OTP email send error:', emailError);
-      } else {
-        console.log(`✔ Đã gửi email chứa OTP tới: ${email}`);
-      }
-    } catch (eErr) {
-      console.error('Resend process error:', eErr);
-    }
+    });
 
     return NextResponse.json({ 
       message: 'Đăng ký thành công. Vui lòng kiểm tra email của bạn để lấy mã OTP xác thực.', 
