@@ -186,9 +186,6 @@ export default function Home() {
         }}>
           PiShare
         </h1>
-        <p style={{ fontSize: '15px', color: '#5f6368', marginTop: '-4px', maxWidth: '480px', lineHeight: '1.5' }}>
-          Hệ thống chuyển đổi link Shopee Affiliate chuyên nghiệp & nhận hoàn tiền tự động
-        </p>
       </div>
 
       <form onSubmit={handleConvert} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
