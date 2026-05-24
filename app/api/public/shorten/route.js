@@ -114,17 +114,9 @@ export async function POST(request) {
     // 5. Lưu ánh xạ vào bảng CSDL
     await db.execute('INSERT INTO short_links (code, long_url) VALUES (?, ?)', [code, longUrl]);
 
-    // 6. Xây dựng link rút gọn động
-    let origin = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!origin) {
-      const protocol = request.headers.get('x-forwarded-proto') || 'http';
-      const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
-      if (host) {
-        origin = `${protocol}://${host}`;
-      } else {
-        origin = new URL(request.url).origin;
-      }
-    }
+    // 6. Xây dựng link rút gọn - dùng BASE_URL từ server env, fallback hardcode pishare.site
+    // (Không dùng request.url vì sau reverse proxy có thể trả về internal localhost)
+    const origin = process.env.BASE_URL || 'https://pishare.site';
     const shortUrl = `${origin}/${code}`;
 
     return NextResponse.json(
