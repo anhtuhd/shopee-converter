@@ -175,18 +175,6 @@ export default function Home() {
     <div className="main-container">
 
       <div className="home-brand-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px', gap: '12px', textAlign: 'center' }}>
-        <img 
-          src="/logo.jpg" 
-          alt="PiShare Logo" 
-          style={{ 
-            width: '120px', 
-            height: '120px', 
-            borderRadius: '50%', 
-            boxShadow: '0 10px 30px rgba(26, 115, 232, 0.15)',
-            border: '4px solid white',
-            background: 'white'
-          }} 
-        />
         <h1 style={{ 
           fontSize: '42px', 
           fontWeight: '800', 
