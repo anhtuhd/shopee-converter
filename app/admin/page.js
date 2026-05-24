@@ -16,6 +16,17 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [editingUser, setEditingUser] = useState(null);
   const [editCommission, setEditCommission] = useState('');
+  const [editCustomAffiliateId, setEditCustomAffiliateId] = useState('');
+  const [updatingUser, setUpdatingUser] = useState(false);
+
+  // Special Bonuses
+  const [bonuses, setBonuses] = useState([]);
+  const [bonusUserId, setBonusUserId] = useState('');
+  const [bonusRate, setBonusRate] = useState('');
+  const [bonusStart, setBonusStart] = useState('');
+  const [bonusEnd, setBonusEnd] = useState('');
+  const [bonusDesc, setBonusDesc] = useState('');
+  const [addingBonus, setAddingBonus] = useState(false);
   
   // Orders
   const [orders, setOrders] = useState([]);
@@ -122,8 +133,125 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'payouts') {
       fetchPayouts();
+    } else if (activeTab === 'bonuses') {
+      fetchBonuses();
     }
   }, [activeTab, cutoffDate]);
+
+  const fetchBonuses = async () => {
+    try {
+      const res = await fetch('/api/admin/bonuses');
+      const data = await res.json();
+      if (res.ok) {
+        setBonuses(data.bonuses || []);
+      }
+    } catch (err) {
+      console.error('Error fetching bonuses:', err);
+    }
+  };
+
+  const handleAddBonus = async (e) => {
+    e.preventDefault();
+    if (!bonusUserId || !bonusRate || !bonusStart || !bonusEnd) {
+      alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
+      return;
+    }
+
+    const rateFloat = parseFloat(bonusRate) / 100;
+    if (isNaN(rateFloat) || rateFloat < 0 || rateFloat > 10) {
+      alert('Tỷ lệ thưởng không hợp lệ (Ví dụ: 70 cho 70%)');
+      return;
+    }
+
+    setAddingBonus(true);
+    try {
+      const res = await fetch('/api/admin/bonuses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: parseInt(bonusUserId),
+          bonusRate: rateFloat,
+          startDate: bonusStart,
+          endDate: bonusEnd,
+          description: bonusDesc
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Thêm thưởng đặc biệt thành công!');
+        setBonusUserId('');
+        setBonusRate('');
+        setBonusStart('');
+        setBonusEnd('');
+        setBonusDesc('');
+        await fetchBonuses();
+      } else {
+        alert(data.error || 'Có lỗi xảy ra');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    } finally {
+      setAddingBonus(false);
+    }
+  };
+
+  const handleDeleteBonus = async (id) => {
+    if (!confirm('Xác nhận xóa chương trình thưởng đặc biệt này?')) return;
+    try {
+      const res = await fetch(`/api/admin/bonuses?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        alert('Xóa thành công');
+        await fetchBonuses();
+      } else {
+        alert('Lỗi khi xóa');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const handleStartEditUser = (user) => {
+    setEditingUser(user);
+    setEditCommission((user.commission_rate * 100).toFixed(0));
+    setEditCustomAffiliateId(user.custom_affiliate_id || '');
+  };
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    
+    const rateFloat = parseFloat(editCommission) / 100;
+    if (isNaN(rateFloat) || rateFloat < 0 || rateFloat > 10) {
+      alert('Tỷ lệ hoa hồng không hợp lệ (Ví dụ: 50 cho 50%)');
+      return;
+    }
+
+    setUpdatingUser(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...editingUser,
+          commission_rate: rateFloat,
+          custom_affiliate_id: editCustomAffiliateId || null
+        })
+      });
+      if (res.ok) {
+        alert('Cập nhật thành công');
+        setEditingUser(null);
+        await fetchUsers();
+      } else {
+        alert('Lỗi khi cập nhật');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
 
   const clearFilters = () => {
     setFilterStatus('');
@@ -313,6 +441,12 @@ export default function AdminDashboard() {
           Tổng hợp Thanh toán
         </button>
         <button 
+          className={`tab-btn ${activeTab === 'bonuses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bonuses')}
+        >
+          Thưởng Đặc Biệt
+        </button>
+        <button 
           className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
         >
@@ -334,13 +468,14 @@ export default function AdminDashboard() {
                     <th style={{ padding: '12px 8px' }}>Số điện thoại</th>
                     <th style={{ padding: '12px 8px' }}>QR Code</th>
                     <th style={{ padding: '12px 8px' }}>Tỷ lệ hoa hồng</th>
+                    <th style={{ padding: '12px 8px' }}>Affiliate ID riêng</th>
                     <th style={{ padding: '12px 8px' }}>Quyền</th>
                     <th style={{ padding: '12px 8px' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
-                    <tr><td colSpan="8" style={{ padding: '20px', textAlign: 'center' }}>Chưa có dữ liệu.</td></tr>
+                    <tr><td colSpan="9" style={{ padding: '20px', textAlign: 'center' }}>Chưa có dữ liệu.</td></tr>
                   ) : (
                     users.map((u, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -362,13 +497,16 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>
                           <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{(u.commission_rate * 100).toFixed(0)}%</span>
                         </td>
+                        <td style={{ padding: '12px 8px', color: u.custom_affiliate_id ? 'var(--primary-color)' : '#666', fontWeight: u.custom_affiliate_id ? 'bold' : 'normal' }}>
+                          {u.custom_affiliate_id || 'Mặc định'}
+                        </td>
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge ${u.role === 'admin' ? 'status-hoàn-thành' : 'status-đã-hủy'}`}>{u.role}</span>
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button onClick={() => handleUpdateCommission(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
-                              Sửa tỷ lệ
+                            <button onClick={() => handleStartEditUser(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
+                              Sửa
                             </button>
                             {(!u.bank_qr || !u.full_name || !u.phone) && (
                               <button 
@@ -652,7 +790,235 @@ export default function AdminDashboard() {
             </form>
           </div>
         )}
+
+        {activeTab === 'bonuses' && (
+          <div>
+            <div style={{ marginBottom: '24px', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', background: '#f8f9fa' }}>
+              <h3 style={{ marginBottom: '16px' }}>Thêm Chương Trình Thưởng Hoàn Tiền Đặc Biệt</h3>
+              <form onSubmit={handleAddBonus} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
+                    Chọn Thành viên *
+                  </label>
+                  <select
+                    className="form-input"
+                    required
+                    value={bonusUserId}
+                    onChange={(e) => setBonusUserId(e.target.value)}
+                    style={{ padding: '8px 12px' }}
+                  >
+                    <option value="">-- Chọn user --</option>
+                    {users.filter(u => u.role !== 'admin').map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.username} ({u.full_name || 'Không tên'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
+                    Tỷ lệ hoa hồng thưởng (%) *
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    required
+                    placeholder="Ví dụ: 70 cho 70%"
+                    value={bonusRate}
+                    onChange={(e) => setBonusRate(e.target.value)}
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
+                    Thời gian bắt đầu *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="form-input"
+                    required
+                    value={bonusStart}
+                    onChange={(e) => setBonusStart(e.target.value)}
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
+                    Thời gian kết thúc *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="form-input"
+                    required
+                    value={bonusEnd}
+                    onChange={(e) => setBonusEnd(e.target.value)}
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
+                    Mô tả khuyến mại
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ví dụ: Đợt khuyến mại đặc biệt 1/6"
+                    value={bonusDesc}
+                    onChange={(e) => setBonusDesc(e.target.value)}
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+
+                <div style={{ gridColumn: 'span 2', textAlign: 'right' }}>
+                  <button type="submit" className="btn-primary" disabled={addingBonus} style={{ padding: '10px 24px' }}>
+                    {addingBonus ? 'Đang xử lý...' : 'Lưu chương trình'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div>
+              <h3 style={{ marginBottom: '16px' }}>Danh Sách Đặc Quyền Thưởng Đang Có</h3>
+              <div className="table-container" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                      <th style={{ padding: '12px 8px' }}>Username</th>
+                      <th style={{ padding: '12px 8px' }}>Tỷ lệ hoa hồng thưởng</th>
+                      <th style={{ padding: '12px 8px' }}>Thời gian bắt đầu</th>
+                      <th style={{ padding: '12px 8px' }}>Thời gian kết thúc</th>
+                      <th style={{ padding: '12px 8px' }}>Mô tả</th>
+                      <th style={{ padding: '12px 8px' }}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bonuses.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                          Chưa có chương trình thưởng đặc biệt nào được cấu hình.
+                        </td>
+                      </tr>
+                    ) : (
+                      bonuses.map((b) => (
+                        <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{b.username}</td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#34a853' }}>
+                              {(b.bonus_rate * 100).toFixed(0)}%
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>{b.start_date}</td>
+                          <td style={{ padding: '12px 8px' }}>{b.end_date}</td>
+                          <td style={{ padding: '12px 8px' }}>{b.description || '-'}</td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <button
+                              onClick={() => handleDeleteBonus(b.id)}
+                              className="btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ea4335', borderColor: '#ea4335' }}
+                            >
+                              Xóa
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Editing User Modal Overlay */}
+      {editingUser && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#111827' }}>
+              Chỉnh sửa Thành viên: {editingUser.username}
+            </h3>
+            <form onSubmit={handleSaveUser}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px' }}>
+                  Tỷ lệ hoa hồng (%)
+                </label>
+                <input
+                  type="number"
+                  className="form-input"
+                  required
+                  value={editCommission}
+                  onChange={(e) => setEditCommission(e.target.value)}
+                  placeholder="Ví dụ: 50 cho 50%"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                  Tỷ lệ hoàn tiền của user từ tổng hoa hồng đối tác (ví dụ: 50).
+                </span>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '24px' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px' }}>
+                  Affiliate ID riêng (Custom Affiliate ID)
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editCustomAffiliateId}
+                  onChange={(e) => setEditCustomAffiliateId(e.target.value)}
+                  placeholder="Để trống để dùng ID mặc định"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <span style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                  Nếu được điền, tài khoản này sẽ sử dụng ID riêng thay vì ID chung của hệ thống.
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'end' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setEditingUser(null)}
+                  style={{ padding: '8px 16px', fontSize: '14px' }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={updatingUser}
+                  style={{ padding: '8px 16px', fontSize: '14px' }}
+                >
+                  {updatingUser ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

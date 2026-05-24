@@ -58,10 +58,29 @@ export async function POST(request) {
 
     const db = await getConnection();
 
-    // Lấy toàn bộ commission_rate của users 1 lần duy nhất
+    // Lấy toàn bộ commission_rate của users 1 lần duy nhất (phục vụ đối chiếu chữ thường)
     const [userRows] = await db.execute('SELECT username, commission_rate FROM users');
     const userRates = {};
-    userRows.forEach(u => { userRates[u.username] = parseFloat(u.commission_rate) || 0.50; });
+    userRows.forEach(u => { userRates[u.username.toLowerCase()] = parseFloat(u.commission_rate) || 0.50; });
+
+    // Lấy toàn bộ special_bonuses để đối chiếu hoa hồng thưởng đặc biệt theo thời gian
+    const [bonusRows] = await db.execute(`
+      SELECT u.username, sb.bonus_rate, sb.start_date, sb.end_date 
+      FROM special_bonuses sb
+      JOIN users u ON sb.user_id = u.id
+    `);
+    const userBonuses = {};
+    bonusRows.forEach(b => {
+      const username = b.username.toLowerCase();
+      if (!userBonuses[username]) {
+        userBonuses[username] = [];
+      }
+      userBonuses[username].push({
+        rate: parseFloat(b.bonus_rate),
+        startDate: new Date(b.start_date),
+        endDate: new Date(b.end_date)
+      });
+    });
 
     // Lấy toàn bộ order_id + item_id + model_id đã tồn tại cùng trạng thái — tránh N+1 query trong vòng lặp
     const [existingRows] = await db.execute('SELECT id, order_id, item_id, model_id, status FROM orders');
@@ -97,7 +116,18 @@ export async function POST(request) {
       const sub_id5 = record['Sub_id5'] || null;
       const channel = record['Kênh'] || null;
 
-      const rate = userRates[sub_id1] || 0.50;
+      const lowerSub1 = sub_id1 ? sub_id1.toLowerCase() : '';
+      let rate = userRates[lowerSub1] || 0.50;
+
+      // Áp dụng thưởng đặc biệt nếu khớp khoảng thời gian order_time
+      if (lowerSub1 && order_time && userBonuses[lowerSub1]) {
+        const orderDate = new Date(order_time);
+        const activeBonus = userBonuses[lowerSub1].find(b => orderDate >= b.startDate && orderDate <= b.endDate);
+        if (activeBonus) {
+          rate = activeBonus.rate;
+        }
+      }
+
       const user_commission = total_commission * rate;
 
       const key = `${order_id}__${item_id}__${model_id}`;

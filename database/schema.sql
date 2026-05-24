@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     reset_token VARCHAR(255),
     reset_token_expiry DATETIME,
     commission_rate DECIMAL(5,2) DEFAULT 0.50,
+    custom_affiliate_id VARCHAR(50) DEFAULT NULL,
     role ENUM('user', 'admin') DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -56,3 +57,15 @@ CREATE TABLE IF NOT EXISTS short_links (
     long_url TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS special_bonuses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    bonus_rate DECIMAL(5,2) NOT NULL,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    description VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

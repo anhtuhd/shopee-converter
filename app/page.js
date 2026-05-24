@@ -41,6 +41,16 @@ export default function Home() {
     setCopied(false);
   };
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setLink(text);
+      setError('');
+    } catch (err) {
+      setError('Không thể tự động đọc clipboard. Bạn vui lòng cấp quyền truy cập hoặc tự dán bằng tay nhé.');
+    }
+  };
+
   const handleConvert = async (e) => {
     e.preventDefault();
     setError('');
@@ -80,7 +90,7 @@ export default function Home() {
         return;
       }
 
-      const affiliateId = user ? (data.affiliateId || '17399820370') : (data.guestAffiliateId || '17399820370');
+      const affiliateId = user ? (user.custom_affiliate_id || data.affiliateId || '17399820370') : (data.guestAffiliateId || '17399820370');
       const subId = user ? user.username : '';
       const encodedLink = encodeURIComponent(data.finalLink);
 
@@ -185,10 +195,16 @@ export default function Home() {
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
-          {link && (
-            <button type="button" onClick={handleClear} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          {link ? (
+            <button type="button" onClick={handleClear} title="Xóa" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
               <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: '#9aa0a6', width: '24px', height: '24px' }}>
                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
+              </svg>
+            </button>
+          ) : (
+            <button type="button" onClick={handlePaste} title="Dán nhanh" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#9aa0a6" style={{ width: '22px', height: '22px' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0A2.25 2.25 0 0 1 13.5 5.25h-3a2.25 2.25 0 0 1-2.166-1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.346.102.637.311.83.597.16.236.262.51.3.805m-9.332 0c-.346.102-.637.311-.83.597-.16.236-.262.51-.3.805m12.167 3h-1.5m-1.5 0H9m-1.5 0h-1.5M8.25 9.75h1.5m-1.5 3h1.5m-1.5 3h1.5m12.75-6v10.5a1.5 1.5 0 0 1-1.5 1.5h-10.5a1.5 1.5 0 0 1-1.5-1.5V6.75a1.5 1.5 0 0 1 1.5-1.5h1.5" />
               </svg>
             </button>
           )}

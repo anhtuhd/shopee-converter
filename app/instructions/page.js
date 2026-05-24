@@ -1,8 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function Instructions() {
+  const [commissionRate, setCommissionRate] = useState(0.50);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Not authenticated');
+      })
+      .then(data => {
+        if (data.user) {
+          setCommissionRate(parseFloat(data.user.commission_rate) || 0.50);
+          setIsLoggedIn(true);
+        }
+      })
+      .catch(() => {
+        setCommissionRate(0.50);
+        setIsLoggedIn(false);
+      });
+  }, []);
   const steps = [
     {
       icon: (
@@ -49,6 +70,8 @@ export default function Instructions() {
         <span>
           Toàn bộ hoa hồng tích lũy hợp lệ của bạn sẽ được hệ thống tổng hợp đối soát và tự động chuyển khoản thanh toán vào ngày 15 hàng tháng qua tài khoản ngân hàng từ mã QR bạn cung cấp.
           <br />
+          Mức hoàn tiền hiện tại của bạn là: <strong style={{ color: 'var(--primary-color)' }}>{(commissionRate * 100).toFixed(0)}%</strong> giá trị hoa hồng nhận từ đối tác tiếp thị liên kết (không phải giá trị tổng đơn hàng).
+          <br />
           <strong style={{ color: '#1a73e8' }}>Lưu ý:</strong> Các đơn hàng mới mua sẽ được cập nhật tại tab Lịch sử đơn hàng vào ngày hôm sau.
         </span>
       ),
@@ -66,6 +89,43 @@ export default function Instructions() {
           <p style={{ fontSize: '16px', color: '#5f6368', maxWidth: '600px', margin: '0 auto', lineHeight: '1.6' }}>
             Hãy dành vài phút xem qua các chính sách và hướng dẫn bên dưới để đảm bảo mọi đơn hàng của bạn đều được ghi nhận hoàn tiền thành công và chính xác.
           </p>
+        </div>
+
+        {/* Commission Highlight Box */}
+        <div style={{
+          backgroundColor: '#f1f8e9',
+          border: '1px solid #c5e1a5',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          marginBottom: '30px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          textAlign: 'left'
+        }}>
+          <div style={{
+            backgroundColor: '#8bc34a',
+            color: 'white',
+            borderRadius: '50%',
+            width: '48px',
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            flexShrink: 0
+          }}>
+            %
+          </div>
+          <div>
+            <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#33691e', marginBottom: '4px' }}>
+              Tỷ lệ hoàn tiền của bạn: {(commissionRate * 100).toFixed(0)}% hoa hồng
+            </h4>
+            <p style={{ fontSize: '13px', color: '#558b2f', margin: 0, lineHeight: '1.5' }}>
+              Hệ thống mặc định hoàn lại <strong>{(commissionRate * 100).toFixed(0)}% giá trị hoa hồng sản phẩm thực tế nhận được từ đối tác tiếp thị liên kết Shopee</strong> (không phải tổng giá trị thanh toán của đơn hàng). {isLoggedIn ? 'Tỷ lệ này áp dụng riêng cho tài khoản của bạn.' : 'Vui lòng đăng nhập để xem tỷ lệ chính xác cho tài khoản của bạn.'}
+            </p>
+          </div>
         </div>
 
         {/* Content Grid */}

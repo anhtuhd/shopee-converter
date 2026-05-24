@@ -27,7 +27,7 @@ export async function GET(request) {
 
   try {
     const db = await getConnection();
-    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
+    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
     const [countRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     
     return NextResponse.json({
@@ -46,15 +46,15 @@ export async function POST(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
-    const { username, email, password, full_name, phone, role, commission_rate } = await request.json();
+    const { username, email, password, full_name, phone, role, commission_rate, custom_affiliate_id } = await request.json();
     const password_hash = await bcrypt.hash(password || '123456', 10);
     const db = await getConnection();
     const lowerUsername = username ? username.toLowerCase() : '';
     // Nếu commission_rate không được truyền hoặc là null/undefined, mặc định luôn là 0.5
     const finalRate = (commission_rate === undefined || commission_rate === null || commission_rate === '') ? 0.50 : parseFloat(commission_rate);
     await db.execute(
-      'INSERT INTO users (username, email, password_hash, full_name, phone, role, commission_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [lowerUsername, email, password_hash, full_name || '', phone || '', role || 'user', finalRate]
+      'INSERT INTO users (username, email, password_hash, full_name, phone, role, commission_rate, custom_affiliate_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [lowerUsername, email, password_hash, full_name || '', phone || '', role || 'user', finalRate, custom_affiliate_id || null]
     );
     return NextResponse.json({ message: 'User created' });
   } catch (error) {
@@ -66,19 +66,19 @@ export async function PUT(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
-    const { id, username, email, full_name, phone, role, password, commission_rate } = await request.json();
+    const { id, username, email, full_name, phone, role, password, commission_rate, custom_affiliate_id } = await request.json();
     const db = await getConnection();
     
     if (password) {
       const password_hash = await bcrypt.hash(password, 10);
       await db.execute(
-        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, password_hash=?, commission_rate=? WHERE id=?',
-        [username, email, full_name || '', phone || '', role, password_hash, commission_rate, id]
+        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, password_hash=?, commission_rate=?, custom_affiliate_id=? WHERE id=?',
+        [username, email, full_name || '', phone || '', role, password_hash, commission_rate, custom_affiliate_id || null, id]
       );
     } else {
       await db.execute(
-        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, commission_rate=? WHERE id=?',
-        [username, email, full_name || '', phone || '', role, commission_rate, id]
+        'UPDATE users SET username=?, email=?, full_name=?, phone=?, role=?, commission_rate=?, custom_affiliate_id=? WHERE id=?',
+        [username, email, full_name || '', phone || '', role, commission_rate, custom_affiliate_id || null, id]
       );
     }
     return NextResponse.json({ message: 'User updated' });

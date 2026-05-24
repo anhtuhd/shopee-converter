@@ -41,10 +41,24 @@ export async function POST(request) {
     // 1. Phân giải affiliateId
     let affiliateId = reqAffiliateId;
     if (!affiliateId) {
-      const [settings] = await db.execute(
-        "SELECT setting_value FROM settings WHERE setting_key = 'guest_affiliate_id'"
-      );
-      affiliateId = settings[0]?.setting_value || '17399820370';
+      if (subId) {
+        const [userRows] = await db.execute(
+          "SELECT custom_affiliate_id FROM users WHERE LOWER(username) = LOWER(?)",
+          [subId]
+        );
+        if (userRows.length > 0 && userRows[0].custom_affiliate_id) {
+          affiliateId = userRows[0].custom_affiliate_id;
+        }
+      }
+
+      if (!affiliateId) {
+        const settingKey = subId ? 'global_affiliate_id' : 'guest_affiliate_id';
+        const [settings] = await db.execute(
+          "SELECT setting_value FROM settings WHERE setting_key = ?",
+          [settingKey]
+        );
+        affiliateId = settings[0]?.setting_value || '17399820370';
+      }
     }
 
     // 2. Phân giải link rút gọn Shopee (nếu có) thành link đích
