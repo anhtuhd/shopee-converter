@@ -376,7 +376,7 @@ function VerifyOtpContent() {
           fontWeight: '600',
           marginTop: '6px'
         }}>
-          <span style={{ color: '#1a73e8' }}>✉ anhtudh95@gmail.com</span>
+          <span style={{ color: '#1a73e8' }}>✉ anhtuhd95@gmail.com</span>
           <span style={{ color: '#137333' }}>💬 Zalo: 0397872462</span>
         </div>
       </div>

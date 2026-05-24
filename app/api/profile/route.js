@@ -35,20 +35,37 @@ export async function GET(request) {
 
     if (users.length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Kiểm tra xem user có đang trong thời gian hưởng bonus 5% hoa hồng cá nhân (Commission Boost) không
-    const [bonusRows] = await db.execute(`
-      SELECT COUNT(*) as active_bonus 
+    // Kiểm tra xem user có đang trong thời gian hưởng bonus 5% hoa hồng cá nhân (Commission Boost) không - Cộng dồn tích lũy
+    const [referralsWithFirstOrder] = await db.execute(`
+      SELECT first_order_completed_at 
       FROM referrals 
       WHERE referrer_id = ? 
         AND first_order_completed_at IS NOT NULL 
-        AND first_order_completed_at <= NOW() 
-        AND NOW() <= DATE_ADD(first_order_completed_at, INTERVAL 30 DAY)
+      ORDER BY first_order_completed_at ASC
     `, [decoded.userId]);
 
-    const hasActiveBonus = (bonusRows[0]?.active_bonus || 0) > 0;
+    let bonusExpiryDate = null;
+    for (const ref of referralsWithFirstOrder) {
+      const completionDate = new Date(ref.first_order_completed_at);
+      if (bonusExpiryDate === null) {
+        // Lần đầu: bắt đầu từ ngày hoàn thành đơn đầu và kéo dài 30 ngày
+        bonusExpiryDate = new Date(completionDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      } else {
+        if (completionDate <= bonusExpiryDate) {
+          // Hoàn thành đơn hàng khi đang trong hạn bonus -> Cộng dồn thêm 30 ngày vào hạn cũ
+          bonusExpiryDate = new Date(bonusExpiryDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        } else {
+          // Hoàn thành đơn hàng sau khi hết hạn -> Bắt đầu chu kỳ 30 ngày mới từ ngày hoàn thành đơn này
+          bonusExpiryDate = new Date(completionDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        }
+      }
+    }
+
+    const hasActiveBonus = bonusExpiryDate !== null && new Date() <= bonusExpiryDate;
     
     // Tạo bản copy của thông tin user và cập nhật commission_rate nếu có bonus
     const userProfile = { ...users[0] };
+    userProfile.referral_bonus_expiry = bonusExpiryDate ? bonusExpiryDate.toISOString() : null;
     if (hasActiveBonus) {
       userProfile.commission_rate = parseFloat(userProfile.commission_rate) + 0.05;
       userProfile.has_referral_bonus = true;

@@ -92,7 +92,7 @@ export default function Instructions() {
           <strong style={{ color: '#137333' }}>Quyền lợi đặc biệt:</strong>
           <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
             <li>Bạn nhận được <strong>thưởng thêm 5% hoa hồng</strong> trích từ phần của hệ thống trên tất cả các đơn hàng hợp lệ của bạn bè trọn đời.</li>
-            <li>Đồng thời, bạn được <strong>tặng thêm 5% hoa hồng cá nhân</strong> (lên tới 55%) trong vòng <strong>30 ngày</strong> kể từ khi bạn bè hoàn thành đơn hàng đầu tiên.</li>
+            <li>Đồng thời, bạn được <strong>tặng thêm 5% hoa hồng cá nhân</strong> trong vòng <strong>30 ngày</strong> cho mỗi người giới thiệu thành công kể từ khi họ hoàn thành đơn hàng đầu tiên (đặc biệt: thời gian thưởng này được **cộng dồn tích lũy liên tục** nếu bạn giới thiệu nhiều người!).</li>
           </ul>
           Vào mục <Link href="/profile" style={{ color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}>Giới thiệu bạn bè</Link> trong trang cá nhân để lấy link nhanh và theo dõi danh sách bạn bè đã mời!
         </span>
@@ -232,7 +232,7 @@ export default function Instructions() {
             gap: '24px',
             flexWrap: 'wrap'
           }}>
-            <a href="mailto:anhtudh95@gmail.com" style={{
+            <a href="mailto:anhtuhd95@gmail.com" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
@@ -245,7 +245,7 @@ export default function Instructions() {
               backgroundColor: '#f1f3f4',
               transition: 'background-color 0.2s'
             }}>
-              ✉ Email: anhtudh95@gmail.com
+              ✉ Email: anhtuhd95@gmail.com
             </a>
             <a href="https://zalo.me/0397872462" target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex',

@@ -104,18 +104,56 @@ export async function POST(request) {
       };
     });
 
-    // Lấy toàn bộ khoảng thời gian được cộng bonus 5% của tất cả người giới thiệu
+    // Lấy toàn bộ khoảng thời gian được cộng bonus 5% của tất cả người giới thiệu (Đã cộng dồn tích lũy)
     const referralBonusIntervals = {}; // referrer_username -> [ { start, end } ]
+    
+    // Gom nhóm theo referrer_username
+    const groupedReferrals = {};
     referralRows.forEach(ref => {
       if (ref.first_order_completed_at) {
         const username = ref.referrer_username;
-        if (!referralBonusIntervals[username]) {
-          referralBonusIntervals[username] = [];
+        if (!groupedReferrals[username]) {
+          groupedReferrals[username] = [];
         }
-        const start = new Date(ref.first_order_completed_at);
-        const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 ngày sau
-        referralBonusIntervals[username].push({ start, end });
+        groupedReferrals[username].push(new Date(ref.first_order_completed_at));
       }
+    });
+
+    // Tính toán khoảng thời gian cộng dồn cho mỗi referrer
+    Object.entries(groupedReferrals).forEach(([username, dates]) => {
+      // Sắp xếp thời gian hoàn thành đơn hàng đầu tiên tăng dần
+      dates.sort((a, b) => a - b);
+      
+      const intervals = [];
+      let currentInterval = null;
+      
+      dates.forEach(date => {
+        if (!currentInterval) {
+          // Bắt đầu khoảng đầu tiên
+          currentInterval = {
+            start: new Date(date),
+            end: new Date(date.getTime() + 30 * 24 * 60 * 60 * 1000)
+          };
+        } else {
+          if (date <= currentInterval.end) {
+            // Hoàn thành đơn hàng khi đang trong hạn bonus -> Cộng dồn thêm 30 ngày vào hạn cũ
+            currentInterval.end = new Date(currentInterval.end.getTime() + 30 * 24 * 60 * 60 * 1000);
+          } else {
+            // Hoàn thành đơn hàng sau khi hết hạn -> Lưu khoảng cũ lại, bắt đầu khoảng bonus mới từ date
+            intervals.push(currentInterval);
+            currentInterval = {
+              start: new Date(date),
+              end: new Date(date.getTime() + 30 * 24 * 60 * 60 * 1000)
+            };
+          }
+        }
+      });
+      
+      if (currentInterval) {
+        intervals.push(currentInterval);
+      }
+      
+      referralBonusIntervals[username] = intervals;
     });
 
     // Đối tượng ghi nhận các mốc ngày hoàn thành đơn đầu tiên của cấp dưới cần cập nhật sau vòng lặp

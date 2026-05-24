@@ -628,6 +628,10 @@ header.main-header {
 }
 
 @media (max-width: 480px) {
+  .brand-name {
+    display: none;
+  }
+
   .logo-text {
     font-size: 2.2rem;
   }

@@ -130,7 +130,7 @@ export async function POST(request) {
             <br/>
             <p>Nếu bạn không thực hiện đăng ký tài khoản này, xin vui lòng bỏ qua email này.</p>
             <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;"/>
-            <p style="font-size: 12px; color: #666; text-align: center; margin: 0;">Hệ thống PiShare.site - Hỗ trợ: anhtudh95@gmail.com - Zalo: 0397872462</p>
+            <p style="font-size: 12px; color: #666; text-align: center; margin: 0;">Hệ thống PiShare.site - Hỗ trợ: anhtuhd95@gmail.com - Zalo: 0397872462</p>
           </div>
         `
     });

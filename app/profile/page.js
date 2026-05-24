@@ -272,7 +272,7 @@ export default function Profile() {
               <h3 style={{ color: '#1a73e8', fontSize: '18px', margin: '0 0 12px 0', fontWeight: '700' }}>Chương trình giới thiệu bạn bè</h3>
               <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#5f6368', lineHeight: '1.5' }}>
                 Mời bạn bè tham gia <strong>PiShare.site</strong> để cùng nhau kiếm tiền! Bạn sẽ nhận được <strong>thưởng thêm 5% hoa hồng</strong> trích từ phần của hệ thống trên mỗi đơn hàng hợp lệ của bạn bè (người được giới thiệu hoàn toàn không bị ảnh hưởng). 
-                Đồng thời, bạn cũng sẽ được <strong>cộng thêm 5% hoa hồng cá nhân</strong> trong vòng 30 ngày kể từ khi bạn bè hoàn thành đơn hàng đầu tiên.
+                Đồng thời, bạn cũng sẽ được <strong>cộng thêm 5% hoa hồng cá nhân</strong> trong vòng 30 ngày cho mỗi người giới thiệu thành công kể từ khi họ hoàn thành đơn hàng đầu tiên (đặc biệt: thời gian thưởng này được **cộng dồn tích lũy liên tục** nếu bạn giới thiệu nhiều người!).
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
