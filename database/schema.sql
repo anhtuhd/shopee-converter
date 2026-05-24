@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     commission_rate DECIMAL(5,2) DEFAULT 0.50,
     custom_affiliate_id VARCHAR(50) DEFAULT NULL,
     role ENUM('user', 'admin') DEFAULT 'user',
+    is_verified TINYINT(1) DEFAULT 0,
+    verification_token VARCHAR(255) DEFAULT NULL,
+    verification_token_expiry DATETIME DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -40,6 +43,9 @@ CREATE TABLE IF NOT EXISTS orders (
     order_value DECIMAL(15,2) DEFAULT 0,
     total_commission DECIMAL(15,2) DEFAULT 0,
     user_commission DECIMAL(15,2) DEFAULT 0,
+    referrer_id INT DEFAULT NULL,
+    referrer_commission DECIMAL(15,2) DEFAULT 0.00,
+    referrer_payout_status VARCHAR(50) DEFAULT 'Chưa thanh toán',
     sub_id1 VARCHAR(50), -- Username
     sub_id2 VARCHAR(50),
     sub_id3 VARCHAR(50),
@@ -68,4 +74,20 @@ CREATE TABLE IF NOT EXISTS special_bonuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS referrals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    referrer_id INT NOT NULL,
+    referred_id INT NOT NULL UNIQUE,
+    first_order_completed_at DATETIME DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (referrer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (referred_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bổ sung chỉ mục (Indexes) tối ưu hiệu năng
+CREATE INDEX IF NOT EXISTS idx_orders_sub_id1 ON orders(sub_id1);
+CREATE INDEX IF NOT EXISTS idx_orders_referrer_id ON orders(referrer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status_completed ON orders(status, completed_time);
+CREATE INDEX IF NOT EXISTS idx_bonuses_user_dates ON special_bonuses(user_id, start_date, end_date);
 

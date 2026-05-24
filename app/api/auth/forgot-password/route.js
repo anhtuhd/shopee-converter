@@ -36,7 +36,7 @@ export async function POST(request) {
       [resetToken, mysqlExpiry, email]
     );
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL || 'https://pishare.site';
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
     // Gửi email bằng Resend

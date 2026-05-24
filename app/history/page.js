@@ -9,6 +9,7 @@ function HistoryContent() {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [referral, setReferral] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -35,6 +36,9 @@ function HistoryContent() {
         setUser(data.user);
         setOrders(data.orders || []);
       }
+      if (data.referral) {
+        setReferral(data.referral);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -49,9 +53,17 @@ function HistoryContent() {
   const purchaseOrders = orders; // All orders
   const paymentHistory = orders.filter(o => o.status === 'Đã thanh toán' || o.status === 'Hoàn thành');
   
-  // Calculate total pending and total paid
+  // Calculate total pending and total paid (fallbacks if referral state API hasn't resolved)
   const totalCompleted = orders.filter(o => o.status === 'Hoàn thành').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
   const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
+
+  const pendingPersonal = referral?.pendingPersonal !== undefined ? referral.pendingPersonal : totalCompleted;
+  const pendingReferral = referral?.pendingReferral !== undefined ? referral.pendingReferral : 0;
+  const pendingPayout = referral?.pendingPayout !== undefined ? referral.pendingPayout : (pendingPersonal + pendingReferral);
+
+  const paidPersonal = referral?.paidPersonal !== undefined ? referral.paidPersonal : totalPaid;
+  const paidReferral = referral?.paidReferral !== undefined ? referral.paidReferral : 0;
+  const paidPayout = referral?.paidPayout !== undefined ? referral.paidPayout : (paidPersonal + paidReferral);
 
   return (
     <div className="main-container" style={{ alignItems: 'stretch', padding: '40px 24px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -63,6 +75,12 @@ function HistoryContent() {
           onClick={() => setActiveTab('purchases')}
         >
           Lịch sử mua hàng
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'referrals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('referrals')}
+        >
+          Hoa hồng giới thiệu
         </button>
         <button 
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
@@ -110,17 +128,87 @@ function HistoryContent() {
           </div>
         )}
 
+        {activeTab === 'referrals' && referral && (
+          <div>
+            <h3 style={{ fontSize: '18px', marginBottom: '16px' }}>Lịch sử đơn hàng giới thiệu thụ động</h3>
+            <div className="table-container" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                    <th style={{ padding: '12px 8px' }}>Mã Đơn</th>
+                    <th style={{ padding: '12px 8px' }}>Người mua</th>
+                    <th style={{ padding: '12px 8px' }}>Thời gian</th>
+                    <th style={{ padding: '12px 8px' }}>Tổng hoa hồng gốc</th>
+                    <th style={{ padding: '12px 8px' }}>Thưởng của bạn (5%)</th>
+                    <th style={{ padding: '12px 8px' }}>Trạng thái đơn gốc</th>
+                    <th style={{ padding: '12px 8px' }}>Trạng thái nhận tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!referral.referralOrders || referral.referralOrders.length === 0 ? (
+                    <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có hoa hồng giới thiệu nào.</td></tr>
+                  ) : (
+                    referral.referralOrders.map((order, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '12px 8px', fontWeight: '500' }}>{order.order_id}</td>
+                        <td style={{ padding: '12px 8px' }}>{order.purchaser}</td>
+                        <td style={{ padding: '12px 8px' }}>{new Date(order.order_time).toLocaleString('vi-VN')}</td>
+                        <td style={{ padding: '12px 8px' }}>{parseFloat(order.total_commission).toLocaleString('vi-VN')} đ</td>
+                        <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#137333' }}>
+                          +{parseFloat(order.referrer_commission).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span className={`status-badge status-${(order.status || '').toLowerCase().replace(/ /g, '-')}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <span className={`status-badge status-${order.referrer_payout_status === 'Đã thanh toán' ? 'đã-thanh-toán' : 'đang-chờ-xử-lý'}`}>
+                            {order.referrer_payout_status === 'Đã thanh toán' ? 'Đã nhận' : 'Đang chờ'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'payments' && (
           <div>
             <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
-              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: '1 1 300px', background: '#f8f9fa' }}>
-                <div style={{ color: 'var(--secondary-text)', fontSize: '14px' }}>Hoa hồng chưa thanh toán (Hoàn thành)</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ea4335' }}>{totalCompleted.toLocaleString('vi-VN')} đ</div>
-                <div style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px' }}>Sẽ được Admin thanh toán hàng tháng vào ngày cố định.</div>
+              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', flex: '1 1 300px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <div style={{ color: 'var(--secondary-text)', fontSize: '14px', marginBottom: '8px' }}>Hoa hồng chưa thanh toán (Đang chờ)</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#ea4335', marginBottom: '12px' }}>{pendingPayout.toLocaleString('vi-VN')} đ</div>
+                <div style={{ borderTop: '1px dashed #eee', paddingTop: '8px', fontSize: '13px', color: '#5f6368' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>Hoa hồng cá nhân (đơn Hoàn thành):</span>
+                    <strong style={{ color: '#202124' }}>{pendingPersonal.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Thưởng giới thiệu (đang chờ duyệt):</span>
+                    <strong style={{ color: '#202124' }}>{pendingReferral.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--secondary-text)', marginTop: '8px', fontStyle: 'italic' }}>
+                  Sẽ được Admin thanh toán hàng tháng vào ngày cố định.
+                </div>
               </div>
-              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', flex: '1 1 300px', background: '#f8f9fa' }}>
-                <div style={{ color: 'var(--secondary-text)', fontSize: '14px' }}>Đã thanh toán thành công</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#34a853' }}>{totalPaid.toLocaleString('vi-VN')} đ</div>
+              <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', flex: '1 1 300px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <div style={{ color: 'var(--secondary-text)', fontSize: '14px', marginBottom: '8px' }}>Đã thanh toán thành công</div>
+                <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#34a853', marginBottom: '12px' }}>{paidPayout.toLocaleString('vi-VN')} đ</div>
+                <div style={{ borderTop: '1px dashed #eee', paddingTop: '8px', fontSize: '13px', color: '#5f6368' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span>Hoa hồng cá nhân đã nhận:</span>
+                    <strong style={{ color: '#202124' }}>{paidPersonal.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Thưởng giới thiệu đã nhận:</span>
+                    <strong style={{ color: '#202124' }}>{paidReferral.toLocaleString('vi-VN')} đ</strong>
+                  </div>
+                </div>
               </div>
             </div>
 

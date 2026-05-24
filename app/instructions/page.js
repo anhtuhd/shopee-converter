@@ -76,6 +76,28 @@ export default function Instructions() {
         </span>
       ),
     },
+    {
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '32px', height: '32px', color: '#a8349d' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+        </svg>
+      ),
+      title: '5. Chương trình mời bạn bè & Nhận thưởng thụ động',
+      desc: (
+        <span>
+          Mời bạn bè tham gia PiShare.site bằng cách chia sẻ <strong>Mã giới thiệu (chính là tên đăng nhập - username của bạn)</strong> hoặc gửi link giới thiệu cá nhân có dạng: 
+          <br />
+          <strong style={{ color: '#ea4335' }}>https://pishare.site/register?ref=username_cua_ban</strong>.
+          <br />
+          <strong style={{ color: '#137333' }}>Quyền lợi đặc biệt:</strong>
+          <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
+            <li>Bạn nhận được <strong>thưởng thêm 5% hoa hồng</strong> trích từ phần của hệ thống trên tất cả các đơn hàng hợp lệ của bạn bè trọn đời.</li>
+            <li>Đồng thời, bạn được <strong>tặng thêm 5% hoa hồng cá nhân</strong> (lên tới 55%) trong vòng <strong>30 ngày</strong> kể từ khi bạn bè hoàn thành đơn hàng đầu tiên.</li>
+          </ul>
+          Vào mục <Link href="/profile" style={{ color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}>Giới thiệu bạn bè</Link> trong trang cá nhân để lấy link nhanh và theo dõi danh sách bạn bè đã mời!
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -161,9 +183,9 @@ export default function Instructions() {
                 <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#202124', marginBottom: '8px' }}>
                   {step.title}
                 </h3>
-                <p style={{ fontSize: '14px', color: '#5f6368', lineHeight: '1.6' }}>
+                <div style={{ fontSize: '14px', color: '#5f6368', lineHeight: '1.6' }}>
                   {step.desc}
-                </p>
+                </div>
               </div>
             </div>
           ))}
@@ -184,6 +206,62 @@ export default function Instructions() {
             <Link href="/profile" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', fontWeight: '600', backgroundColor: 'white' }}>
               Thông tin cá nhân
             </Link>
+          </div>
+        </div>
+
+        {/* Contact Card */}
+        <div style={{
+          marginTop: '30px',
+          padding: '24px',
+          backgroundColor: '#fff',
+          borderRadius: '16px',
+          border: '1px solid #dfe1e5',
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+          textAlign: 'center'
+        }}>
+          <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#202124', marginBottom: '8px' }}>
+            Bạn cần hỗ trợ hoặc kích hoạt tài khoản thủ công?
+          </h4>
+          <p style={{ fontSize: '13px', color: '#5f6368', marginBottom: '16px', lineHeight: '1.5' }}>
+            Nếu bạn không nhận được email kích hoạt hoặc có bất kỳ câu hỏi nào về chu kỳ đối soát, tỷ lệ hoàn tiền, hãy liên hệ trực tiếp với Admin PiShare để được hỗ trợ tức thì:
+          </p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            gap: '24px',
+            flexWrap: 'wrap'
+          }}>
+            <a href="mailto:anhtudh95@gmail.com" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#1a73e8',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#f1f3f4',
+              transition: 'background-color 0.2s'
+            }}>
+              ✉ Email: anhtudh95@gmail.com
+            </a>
+            <a href="https://zalo.me/0397872462" target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#137333',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '14px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#f1f3f4',
+              transition: 'background-color 0.2s'
+            }}>
+              💬 Zalo: 0397872462
+            </a>
           </div>
         </div>
       </div>

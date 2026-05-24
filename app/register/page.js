@@ -9,10 +9,22 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState('');
   const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Đọc mã giới thiệu tự động từ URL query param ?ref=username
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        setReferralCode(ref);
+      }
+    }
+  });
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -30,13 +42,17 @@ export default function Register() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password })
+        body: JSON.stringify({ username, email, password, referralCode })
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        router.push('/login');
+        if (data.requiresVerification) {
+          router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+        } else {
+          router.push('/login');
+        }
       } else {
         setError(data.error || 'Đăng ký thất bại');
         setDetails(data.details || '');
@@ -70,6 +86,16 @@ export default function Register() {
               className="form-input" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Mã giới thiệu (Tùy chọn)</label>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Nhập tên đăng nhập của người giới thiệu"
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value)}
             />
           </div>
           <div className="form-group">

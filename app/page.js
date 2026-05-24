@@ -202,9 +202,38 @@ export default function Home() {
               </svg>
             </button>
           ) : (
-            <button type="button" onClick={handlePaste} title="Dán nhanh" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#9aa0a6" style={{ width: '22px', height: '22px' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0A2.25 2.25 0 0 1 13.5 5.25h-3a2.25 2.25 0 0 1-2.166-1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.346.102.637.311.83.597.16.236.262.51.3.805m-9.332 0c-.346.102-.637.311-.83.597-.16.236-.262.51-.3.805m12.167 3h-1.5m-1.5 0H9m-1.5 0h-1.5M8.25 9.75h1.5m-1.5 3h1.5m-1.5 3h1.5m12.75-6v10.5a1.5 1.5 0 0 1-1.5 1.5h-10.5a1.5 1.5 0 0 1-1.5-1.5V6.75a1.5 1.5 0 0 1 1.5-1.5h1.5" />
+            <button 
+              type="button" 
+              onClick={handlePaste} 
+              title="Dán nhanh từ Clipboard" 
+              style={{ 
+                background: '#e8f0fe', 
+                border: '1px solid #d2e3fc', 
+                borderRadius: '50%', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                color: '#1a73e8',
+                transition: 'all 0.2s ease',
+                outline: 'none',
+                boxShadow: '0 1px 2px rgba(66, 133, 244, 0.15)',
+                marginRight: '-4px',
+                padding: '0'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#d2e3fc';
+                e.currentTarget.style.borderColor = '#1a73e8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#e8f0fe';
+                e.currentTarget.style.borderColor = '#d2e3fc';
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#1a73e8" style={{ width: '20px', height: '20px' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </button>
           )}

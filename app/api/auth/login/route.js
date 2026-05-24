@@ -19,7 +19,7 @@ export async function POST(request) {
     const searchUsername = username.toLowerCase();
 
     // Find user by username OR email
-    const [rows] = await db.execute('SELECT id, username, password_hash, role FROM users WHERE username = ? OR email = ?', [searchUsername, searchUsername]);
+    const [rows] = await db.execute('SELECT id, username, password_hash, role, is_verified FROM users WHERE username = ? OR email = ?', [searchUsername, searchUsername]);
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Sai tên đăng nhập/email hoặc mật khẩu' }, { status: 401 });
     }
@@ -30,6 +30,13 @@ export async function POST(request) {
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return NextResponse.json({ error: 'Sai tên đăng nhập/email hoặc mật khẩu' }, { status: 401 });
+    }
+
+    // Kiểm tra trạng thái kích hoạt tài khoản
+    if (!user.is_verified) {
+      return NextResponse.json({ 
+        error: 'Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email của bạn để kích hoạt tài khoản.' 
+      }, { status: 403 });
     }
 
     // Generate JWT

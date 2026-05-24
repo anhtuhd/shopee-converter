@@ -82,8 +82,62 @@ export async function POST(request) {
       });
     });
 
-    // Lấy toàn bộ order_id + item_id + model_id đã tồn tại cùng trạng thái — tránh N+1 query trong vòng lặp
-    const [existingRows] = await db.execute('SELECT id, order_id, item_id, model_id, status FROM orders');
+    // Lấy toàn bộ mối liên kết referral để đối chiếu nhanh
+    const [referralRows] = await db.execute(`
+      SELECT 
+        r.referrer_id, 
+        r.referred_id, 
+        LOWER(u_referred.username) as referred_username, 
+        LOWER(u_referrer.username) as referrer_username,
+        r.first_order_completed_at
+      FROM referrals r
+      JOIN users u_referred ON r.referred_id = u_referred.id
+      JOIN users u_referrer ON r.referrer_id = u_referrer.id
+    `);
+    const referralMap = {}; // referred_username -> { referrerId, referredId, referrerUsername, firstOrderCompletedAt }
+    referralRows.forEach(ref => {
+      referralMap[ref.referred_username] = {
+        referrerId: ref.referrer_id,
+        referredId: ref.referred_id,
+        referrerUsername: ref.referrer_username,
+        firstOrderCompletedAt: ref.first_order_completed_at
+      };
+    });
+
+    // Lấy toàn bộ khoảng thời gian được cộng bonus 5% của tất cả người giới thiệu
+    const referralBonusIntervals = {}; // referrer_username -> [ { start, end } ]
+    referralRows.forEach(ref => {
+      if (ref.first_order_completed_at) {
+        const username = ref.referrer_username;
+        if (!referralBonusIntervals[username]) {
+          referralBonusIntervals[username] = [];
+        }
+        const start = new Date(ref.first_order_completed_at);
+        const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 ngày sau
+        referralBonusIntervals[username].push({ start, end });
+      }
+    });
+
+    // Đối tượng ghi nhận các mốc ngày hoàn thành đơn đầu tiên của cấp dưới cần cập nhật sau vòng lặp
+    const referralFirstOrderUpdates = {}; // referred_id -> completed_time_string
+
+    // Lấy danh sách order_id duy nhất từ CSV để query chọn lọc, tránh tải toàn bộ bảng vào RAM (OOM)
+    const orderIds = Array.from(new Set(finalRecords.map(r => r['ID đơn hàng']).filter(Boolean)));
+    let existingRows = [];
+    
+    if (orderIds.length > 0) {
+      const batchSize = 500;
+      for (let i = 0; i < orderIds.length; i += batchSize) {
+        const batch = orderIds.slice(i, i + batchSize);
+        const placeholders = batch.map(() => '?').join(',');
+        const [rows] = await db.execute(
+          `SELECT id, order_id, item_id, model_id, status FROM orders WHERE order_id IN (${placeholders})`,
+          batch
+        );
+        existingRows = existingRows.concat(rows);
+      }
+    }
+
     const existingMap = new Map();
     existingRows.forEach(r => existingMap.set(`${r.order_id}__${r.item_id}__${r.model_id || ''}`, { id: r.id, status: r.status }));
 
@@ -119,7 +173,7 @@ export async function POST(request) {
       const lowerSub1 = sub_id1 ? sub_id1.toLowerCase() : '';
       let rate = userRates[lowerSub1] || 0.50;
 
-      // Áp dụng thưởng đặc biệt nếu khớp khoảng thời gian order_time
+      // 1. Áp dụng thưởng đặc biệt Admin set nếu khớp khoảng thời gian order_time
       if (lowerSub1 && order_time && userBonuses[lowerSub1]) {
         const orderDate = new Date(order_time);
         const activeBonus = userBonuses[lowerSub1].find(b => orderDate >= b.startDate && orderDate <= b.endDate);
@@ -128,7 +182,39 @@ export async function POST(request) {
         }
       }
 
+      // 2. Áp dụng tăng 5% hoa hồng cá nhân nếu nằm trong thời hạn bonus 30 ngày của bất kỳ cấp dưới nào
+      if (lowerSub1 && order_time && referralBonusIntervals[lowerSub1]) {
+        const orderDate = new Date(order_time);
+        const isEligibleForReferralBonus = referralBonusIntervals[lowerSub1].some(
+          interval => orderDate >= interval.start && orderDate <= interval.end
+        );
+        if (isEligibleForReferralBonus) {
+          rate += 0.05; // Tăng thêm 5%
+        }
+      }
+
       const user_commission = total_commission * rate;
+
+      // 3. Tính toán hoa hồng thưởng giới thiệu cho Người giới thiệu (5% từ hoa hồng của cấp dưới)
+      let referrer_id = null;
+      let referrer_commission = 0;
+      let referrer_payout_status = 'Chưa thanh toán';
+
+      if (lowerSub1 && referralMap[lowerSub1]) {
+        const refInfo = referralMap[lowerSub1];
+        referrer_id = refInfo.referrerId;
+        referrer_commission = user_commission * 0.05; // 5% hoa hồng của B thưởng cho A
+        referrer_payout_status = 'Đang chờ'; // Đang chờ thanh toán hoa hồng giới thiệu
+
+        // Ghi nhận ngày hoàn thành đơn hàng đầu tiên của B để kích hoạt 30 ngày bonus cho A
+        if (status === 'Hoàn thành' || status === 'Đã thanh toán') {
+          if (!refInfo.firstOrderCompletedAt && !referralFirstOrderUpdates[refInfo.referredId]) {
+            const completedTimeStr = completed_time || order_time || new Date().toISOString().slice(0, 19).replace('T', ' ');
+            referralFirstOrderUpdates[refInfo.referredId] = completedTimeStr;
+            refInfo.firstOrderCompletedAt = completedTimeStr; // Cập nhật cache để tránh trùng lặp
+          }
+        }
+      }
 
       const key = `${order_id}__${item_id}__${model_id}`;
       const existing = existingMap.get(key);
@@ -138,7 +224,19 @@ export async function POST(request) {
         if (existing.status === 'Đã thanh toán') {
           continue;
         }
-        // Trường hợp trùng key, chỉ cập nhật trạng thái đơn hàng
+
+        // Trường hợp trùng key nhưng cập nhật trạng thái mới
+        if (lowerSub1 && referralMap[lowerSub1]) {
+          const refInfo = referralMap[lowerSub1];
+          if (status === 'Hoàn thành' || status === 'Đã thanh toán') {
+            if (!refInfo.firstOrderCompletedAt && !referralFirstOrderUpdates[refInfo.referredId]) {
+              const completedTimeStr = completed_time || order_time || new Date().toISOString().slice(0, 19).replace('T', ' ');
+              referralFirstOrderUpdates[refInfo.referredId] = completedTimeStr;
+              refInfo.firstOrderCompletedAt = completedTimeStr; // Cập nhật cache
+            }
+          }
+        }
+
         toUpdateMap.set(existing.id, status);
       } else {
         // Nếu trùng key ngay trong cùng một file upload, chỉ cập nhật trạng thái
@@ -150,6 +248,7 @@ export async function POST(request) {
             order_id, status, checkout_id, order_time, completed_time, click_time,
             shop_name, shop_id, item_id, model_id, item_name, product_type, price, quantity,
             order_value, total_commission, user_commission,
+            referrer_id, referrer_commission, referrer_payout_status,
             sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
           ]);
         }
@@ -162,13 +261,14 @@ export async function POST(request) {
     // Bulk INSERT — một câu query thay vì N câu query
     if (toInsert.length > 0) {
       const placeholders = toInsert.map(() =>
-        '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
       ).join(',');
       await db.execute(
         `INSERT INTO orders (
           order_id, status, checkout_id, order_time, completed_time, click_time,
           shop_name, shop_id, item_id, model_id, item_name, product_type, price, quantity,
           order_value, total_commission, user_commission,
+          referrer_id, referrer_commission, referrer_payout_status,
           sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
         ) VALUES ${placeholders}`,
         toInsert.flat()
@@ -183,6 +283,18 @@ export async function POST(request) {
         await db.execute(`
           UPDATE orders SET status = ? WHERE id = ?
         `, [status, id]);
+      }
+    }
+
+    // Thực hiện cập nhật mốc thời gian hoàn thành đơn hàng đầu tiên của cấp dưới vào bảng referrals
+    const referralUpdateEntries = Object.entries(referralFirstOrderUpdates);
+    if (referralUpdateEntries.length > 0) {
+      for (const [referredId, completedTimeStr] of referralUpdateEntries) {
+        await db.execute(
+          'UPDATE referrals SET first_order_completed_at = ? WHERE referred_id = ? AND first_order_completed_at IS NULL',
+          [completedTimeStr, referredId]
+        );
+        console.log(`✔ Đã cập nhật first_order_completed_at cho User ID ${referredId} là ${completedTimeStr}`);
       }
     }
 

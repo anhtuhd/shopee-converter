@@ -55,7 +55,7 @@ export async function POST(request) {
     );
 
     // 3. Gửi email cho từng user nhận được tiền thanh toán
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL || 'https://pishare.site';
     const historyUrl = `${baseUrl}/history`;
 
     for (const stats of statsRows) {

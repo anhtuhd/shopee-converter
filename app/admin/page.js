@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState(null);
   const [editCommission, setEditCommission] = useState('');
   const [editCustomAffiliateId, setEditCustomAffiliateId] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [updatingUser, setUpdatingUser] = useState(false);
 
   // Special Bonuses
@@ -216,6 +217,7 @@ export default function AdminDashboard() {
     setEditingUser(user);
     setEditCommission((user.commission_rate * 100).toFixed(0));
     setEditCustomAffiliateId(user.custom_affiliate_id || '');
+    setEditEmail(user.email || '');
   };
 
   const handleSaveUser = async (e) => {
@@ -235,6 +237,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ...editingUser,
+          email: editEmail,
           commission_rate: rateFloat,
           custom_affiliate_id: editCustomAffiliateId || null
         })
@@ -707,13 +710,15 @@ export default function AdminDashboard() {
                     <th style={{ padding: '12px 8px' }}>Họ Tên</th>
                     <th style={{ padding: '12px 8px' }}>Thông tin Bank (QR)</th>
                     <th style={{ padding: '12px 8px' }}>Số đơn</th>
-                    <th style={{ padding: '12px 8px' }}>Tổng tiền phải trả</th>
+                    <th style={{ padding: '12px 8px' }}>Hoa hồng cá nhân</th>
+                    <th style={{ padding: '12px 8px' }}>Thưởng giới thiệu</th>
+                    <th style={{ padding: '12px 8px' }}>Tổng chuyển khoản</th>
                     <th style={{ padding: '12px 8px' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {payouts.length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: '40px', textAlign: 'center' }}>Không có yêu cầu thanh toán nào trước ngày này.</td></tr>
+                    <tr><td colSpan="8" style={{ padding: '40px', textAlign: 'center' }}>Không có yêu cầu thanh toán nào trước ngày này.</td></tr>
                   ) : (
                     payouts.map((p, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -727,6 +732,12 @@ export default function AdminDashboard() {
                           )}
                         </td>
                         <td style={{ padding: '12px 8px' }}>{p.order_count} đơn</td>
+                        <td style={{ padding: '12px 8px', color: '#5f6368' }}>
+                          {Number(p.personal_payout).toLocaleString('vi-VN')} đ
+                        </td>
+                        <td style={{ padding: '12px 8px', color: '#5f6368' }}>
+                          {Number(p.referral_payout).toLocaleString('vi-VN')} đ
+                        </td>
                         <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#ea4335', fontSize: '18px' }}>
                           {Number(p.total_payout).toLocaleString('vi-VN')} đ
                         </td>
@@ -962,6 +973,21 @@ export default function AdminDashboard() {
               Chỉnh sửa Thành viên: {editingUser.username}
             </h3>
             <form onSubmit={handleSaveUser}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px' }}>
+                  Địa chỉ Email
+                </label>
+                <input
+                  type="email"
+                  className="form-input"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="Nhập địa chỉ email của user"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+              </div>
+
               <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px' }}>
                   Tỷ lệ hoa hồng (%)

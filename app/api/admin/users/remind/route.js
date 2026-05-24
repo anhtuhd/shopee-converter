@@ -56,7 +56,7 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Thông tin user đã đầy đủ, không cần nhắc nhở.' }, { status: 400 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL || 'https://pishare.site';
     const profileUrl = `${baseUrl}/profile`;
 
     const missingListHtml = missingInfo.map(item => `<li>${item}</li>`).join('');
