@@ -48,6 +48,7 @@ export default function Navbar() {
     <>
       <Link href="/" className="nav-link">Trang chủ</Link>
       <Link href="/instructions" className="nav-link">Hướng dẫn</Link>
+      <Link href="/notes" className="nav-link">Lưu ý</Link>
       {user && (
         <>
           <Link href="/profile" className="nav-link">Thông tin cá nhân</Link>

@@ -8,6 +8,7 @@ export default function Profile() {
   const [referral, setReferral] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('info');
+  const [copiedRef, setCopiedRef] = useState(false);
 
   // Profile form states
   const [fullName, setFullName] = useState('');
@@ -55,6 +56,13 @@ export default function Profile() {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+
+    if (!bankQr && !existingQr) {
+      setSaveStatus('Vui lòng tải lên ảnh QR ngân hàng của bạn để hoàn tất cập nhật.');
+      alert('Vui lòng tải lên ảnh QR ngân hàng của bạn để hoàn tất cập nhật.');
+      return;
+    }
+
     setSaveStatus('Đang lưu...');
     try {
       const formData = new FormData();
@@ -293,16 +301,36 @@ export default function Profile() {
                     <button 
                       type="button" 
                       className="btn-primary" 
-                      style={{ padding: '6px 12px', fontSize: '12px', height: '32px', borderRadius: '4px', cursor: 'pointer' }}
-                      onClick={(e) => {
+                      title="Sao chép liên kết"
+                      style={{ 
+                        padding: '0', 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '6px', 
+                        cursor: 'pointer', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        backgroundColor: copiedRef ? '#34a853' : '#1a73e8',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => {
                         const linkStr = `https://pishare.site/register?ref=${user.username}`;
                         navigator.clipboard.writeText(linkStr);
-                        e.currentTarget.innerText = 'Đã copy!';
-                        const btn = e.currentTarget;
-                        setTimeout(() => { btn.innerText = 'Copy Link'; }, 2000);
+                        setCopiedRef(true);
+                        setTimeout(() => { setCopiedRef(false); }, 2000);
                       }}
                     >
-                      Copy Link
+                      {copiedRef ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-3a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H18a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 18 22.5H6.75a2.25 2.25 0 0 1-2.25-2.25v-10.5A2.25 2.25 0 0 1 6.75 7.5Z" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>

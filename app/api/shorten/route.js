@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/db';
 
 const RESERVED_WORDS = new Set([
-  'login', 'register', 'profile', 'history', 'admin', 'instructions', 'api', 'favicon', 'static', 'uploads'
+  'login', 'register', 'profile', 'history', 'admin', 'instructions', 'notes', 'api', 'favicon', 'static', 'uploads'
 ]);
 
 function generateRandomCode(length = 8) {

@@ -199,6 +199,7 @@ export async function POST(request) {
 
     const toInsertMap = new Map();
     const toUpdateMap = new Map();
+    const referrerKhauTruIds = [];
 
     for (const record of finalRecords) {
       const order_id = record['ID đơn hàng'];
@@ -234,7 +235,7 @@ export async function POST(request) {
         const orderDate = new Date(order_time);
         const activeBonus = userBonuses[lowerSub1].find(b => orderDate >= b.startDate && orderDate <= b.endDate);
         if (activeBonus) {
-          rate = activeBonus.rate;
+          rate = rate + activeBonus.rate; // Đổi sang cộng dồn để hỗ trợ cả số âm và số dương!
         }
       }
 
@@ -283,10 +284,7 @@ export async function POST(request) {
             
             // Nếu người giới thiệu cũng đã nhận hoa hồng 'Đã thanh toán' cho đơn này, ta cũng chuyển thành 'Yêu cầu khấu trừ' để trừ tiền đợt sau
             if (existing.referrer_id && existing.referrer_payout_status === 'Đã thanh toán') {
-              await db.execute(
-                "UPDATE orders SET referrer_payout_status = 'Yêu cầu khấu trừ' WHERE id = ?",
-                [existing.id]
-              );
+              referrerKhauTruIds.push(existing.id);
             }
           }
           continue;
@@ -351,6 +349,20 @@ export async function POST(request) {
           UPDATE orders SET status = ? WHERE id = ?
         `, [status, id]);
       }
+    }
+
+    // Bulk UPDATE cho trạng thái khấu trừ của người giới thiệu (nếu có)
+    if (referrerKhauTruIds.length > 0) {
+      const BATCH_SIZE_REF = 50;
+      for (let i = 0; i < referrerKhauTruIds.length; i += BATCH_SIZE_REF) {
+        const batch = referrerKhauTruIds.slice(i, i + BATCH_SIZE_REF);
+        const placeholders = batch.map(() => '?').join(',');
+        await db.execute(
+          `UPDATE orders SET referrer_payout_status = 'Yêu cầu khấu trừ' WHERE id IN (${placeholders})`,
+          batch
+        );
+      }
+      console.log(`✔ Đã cập nhật trạng thái khấu trừ hoa hồng giới thiệu cho ${referrerKhauTruIds.length} đơn hàng.`);
     }
 
     // Thực hiện cập nhật mốc thời gian hoàn thành đơn hàng đầu tiên của cấp dưới vào bảng referrals

@@ -22,12 +22,18 @@ export default function AdminDashboard() {
 
   // Special Bonuses
   const [bonuses, setBonuses] = useState([]);
-  const [bonusUserId, setBonusUserId] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [bonusRate, setBonusRate] = useState('');
   const [bonusStart, setBonusStart] = useState('');
   const [bonusEnd, setBonusEnd] = useState('');
   const [bonusDesc, setBonusDesc] = useState('');
+  const [bonusMarquee, setBonusMarquee] = useState('');
+  const [autoApplyNewUsers, setAutoApplyNewUsers] = useState(false);
   const [addingBonus, setAddingBonus] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
   
   // Orders
   const [orders, setOrders] = useState([]);
@@ -173,18 +179,177 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSelectAllUsers = () => {
+    const filteredUsers = users.filter(u => 
+      u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
+    );
+    const filteredIds = filteredUsers.map(u => u.id);
+    setSelectedUserIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+  };
+
+  const handleClearUserSelection = () => {
+    if (!userSearchTerm) {
+      setSelectedUserIds([]);
+    } else {
+      const filteredUsers = users.filter(u => 
+        u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
+      );
+      const filteredIds = filteredUsers.map(u => u.id);
+      setSelectedUserIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    }
+  };
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const handleDateClick = (dayStr) => {
+    if (!bonusStart || (bonusStart && bonusEnd)) {
+      setBonusStart(dayStr);
+      setBonusEnd('');
+    } else {
+      if (dayStr < bonusStart) {
+        setBonusStart(dayStr);
+      } else {
+        setBonusEnd(dayStr);
+        setShowCalendarDropdown(false); // Close calendar popover on range completion
+      }
+    }
+  };
+
+  const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(calendarYear, calendarMonth);
+    const firstDay = getFirstDayOfMonth(calendarYear, calendarMonth);
+    const dayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+
+    const monthNames = [
+      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+    ];
+
+    const prevMonth = () => {
+      if (calendarMonth === 0) {
+        setCalendarMonth(11);
+        setCalendarYear(prev => prev - 1);
+      } else {
+        setCalendarMonth(prev => prev - 1);
+      }
+    };
+
+    const nextMonth = () => {
+      if (calendarMonth === 11) {
+        setCalendarMonth(0);
+        setCalendarYear(prev => prev + 1);
+      } else {
+        setCalendarMonth(prev => prev + 1);
+      }
+    };
+
+    const days = [];
+    // Blank days for start of month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} style={{ padding: '8px', textAlign: 'center' }}></div>);
+    }
+
+    // Days in month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const currentMonthStr = String(calendarMonth + 1).padStart(2, '0');
+      const currentDayStr = String(d).padStart(2, '0');
+      const dayStr = `${calendarYear}-${currentMonthStr}-${currentDayStr}`;
+
+      const isStart = bonusStart === dayStr;
+      const isEnd = bonusEnd === dayStr;
+      const isInRange = bonusStart && bonusEnd && dayStr > bonusStart && dayStr < bonusEnd;
+
+      let cellStyle = {
+        padding: '8px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        borderRadius: '50%',
+        fontSize: '13px',
+        fontWeight: '500',
+        transition: 'all 0.2s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '32px',
+        height: '32px',
+        margin: 'auto'
+      };
+
+      if (isStart || isEnd) {
+        cellStyle.background = 'var(--primary-color)';
+        cellStyle.color = 'white';
+        cellStyle.fontWeight = 'bold';
+        cellStyle.borderRadius = '50%';
+      } else if (isInRange) {
+        cellStyle.background = '#e8f0fe';
+        cellStyle.color = '#1a73e8';
+        cellStyle.borderRadius = '0';
+      }
+
+      days.push(
+        <div 
+          key={dayStr} 
+          onClick={() => handleDateClick(dayStr)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div 
+            style={cellStyle}
+            onMouseEnter={(e) => {
+              if (!isStart && !isEnd && !isInRange) {
+                e.currentTarget.style.background = '#f1f3f4';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isStart && !isEnd && !isInRange) {
+                e.currentTarget.style.background = 'transparent';
+              }
+            }}
+          >
+            {d}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ width: '100%', maxWidth: '320px', border: '1px solid #dadce0', borderRadius: '12px', padding: '16px', background: 'white', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <button type="button" onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', padding: '4px 8px', color: '#5f6368' }}>&lt;</button>
+          <span style={{ fontWeight: '700', fontSize: '14px', color: '#202124' }}>
+            {monthNames[calendarMonth]}, {calendarYear}
+          </span>
+          <button type="button" onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', padding: '4px 8px', color: '#5f6368' }}>&gt;</button>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
+          {dayLabels.map(label => (
+            <span key={label} style={{ fontSize: '11px', fontWeight: '600', color: '#70757a' }}>{label}</span>
+          ))}
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+          {days}
+        </div>
+      </div>
+    );
+  };
+
   const handleAddBonus = async (e) => {
     e.preventDefault();
-    if (!bonusUserId || !bonusRate || !bonusStart || !bonusEnd) {
-      alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
+    if (selectedUserIds.length === 0 || bonusRate === '' || !bonusStart || !bonusEnd) {
+      alert('Vui lòng chọn ít nhất một thành viên và nhập đầy đủ thông tin bắt buộc');
       return;
     }
 
-    const rateFloat = parseFloat(bonusRate) / 100;
-    if (isNaN(rateFloat) || rateFloat < 0 || rateFloat > 10) {
-      alert('Tỷ lệ thưởng không hợp lệ (Ví dụ: 70 cho 70%)');
+    const rateInt = parseInt(bonusRate, 10);
+    if (isNaN(rateInt) || rateInt < -50 || rateInt > 50) {
+      alert('Tỷ lệ thưởng phải là số nguyên từ -50 đến 50 (Ví dụ: 10 cho +10%, -5 cho -5%)');
       return;
     }
+    const rateFloat = rateInt / 100;
 
     setAddingBonus(true);
     try {
@@ -192,21 +357,25 @@ export default function AdminDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: parseInt(bonusUserId),
+          userIds: selectedUserIds,
           bonusRate: rateFloat,
           startDate: bonusStart,
           endDate: bonusEnd,
-          description: bonusDesc
+          description: bonusDesc,
+          marqueeText: bonusMarquee,
+          autoApply: autoApplyNewUsers
         })
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Thêm thưởng đặc biệt thành công!');
-        setBonusUserId('');
+        alert(data.message || 'Thêm thưởng đặc biệt thành công!');
+        setSelectedUserIds([]);
         setBonusRate('');
         setBonusStart('');
         setBonusEnd('');
         setBonusDesc('');
+        setBonusMarquee('');
+        setAutoApplyNewUsers(false);
         await fetchBonuses();
       } else {
         alert(data.error || 'Có lỗi xảy ra');
@@ -216,6 +385,36 @@ export default function AdminDashboard() {
     } finally {
       setAddingBonus(false);
     }
+  };
+
+  const handleCopyBonusConfig = (b) => {
+    if (!b) return;
+    setBonusRate((parseFloat(b.bonus_rate) * 100).toFixed(0));
+    setBonusStart(b.start_date.substring(0, 10));
+    setBonusEnd(b.end_date.substring(0, 10));
+    setBonusDesc(b.description || '');
+    setBonusMarquee(b.marquee_text || '');
+    
+    // Smooth scroll back to form
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const getUniqueBonuses = () => {
+    const seen = new Set();
+    const unique = [];
+    for (const b of bonuses) {
+      const key = `${b.bonus_rate}-${b.start_date}-${b.end_date}-${b.description || ''}-${b.marquee_text || ''}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(b);
+      }
+    }
+    return unique;
   };
 
   const handleDeleteBonus = async (id) => {
@@ -908,90 +1107,401 @@ export default function AdminDashboard() {
 
         {activeTab === 'bonuses' && (
           <div>
-            <div style={{ marginBottom: '24px', padding: '20px', border: '1px solid var(--border-color)', borderRadius: '8px', background: '#f8f9fa' }}>
-              <h3 style={{ marginBottom: '16px' }}>Thêm Chương Trình Thưởng Hoàn Tiền Đặc Biệt</h3>
-              <form onSubmit={handleAddBonus} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
-                    Chọn Thành viên *
-                  </label>
-                  <select
-                    className="form-input"
-                    required
-                    value={bonusUserId}
-                    onChange={(e) => setBonusUserId(e.target.value)}
-                    style={{ padding: '8px 12px' }}
-                  >
-                    <option value="">-- Chọn user --</option>
-                    {users.filter(u => u.role !== 'admin').map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.username} ({u.full_name || 'Không tên'})
-                      </option>
-                    ))}
-                  </select>
+            <div style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--border-color)', borderRadius: '12px', background: '#f8fafc' }}>
+              <h3 style={{ marginBottom: '20px', color: '#0f172a', fontWeight: '700', fontSize: '16px' }}>Thêm Chương Trình Thưởng Hoàn Tiền Đặc Biệt</h3>
+              
+              <form onSubmit={handleAddBonus} style={{
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '20px',
+                flexWrap: 'wrap',
+                alignItems: 'stretch',
+                width: '100%'
+              }}>
+                
+                {/* Left Column: Scrollable Checkbox List for choosing multiple/all users */}
+                <div style={{ 
+                  flex: '1 1 380px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '12px',
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
+                      👥 1. Chọn thành viên ({selectedUserIds.length})
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button type="button" onClick={handleSelectAllUsers} style={{ background: 'none', border: 'none', color: '#1a73e8', fontSize: '11px', cursor: 'pointer', fontWeight: '600', padding: 0 }}>Chọn tất cả</button>
+                      <span style={{ color: '#e2e8f0', fontSize: '11px' }}>|</span>
+                      <button type="button" onClick={handleClearUserSelection} style={{ background: 'none', border: 'none', color: '#ea4335', fontSize: '11px', cursor: 'pointer', fontWeight: '600', padding: 0 }}>Bỏ chọn hết</button>
+                    </div>
+                  </div>
+
+                  {/* Search Bar for Member Selection */}
+                  <div style={{ position: 'relative', width: '100%', marginBottom: '4px' }}>
+                    <input 
+                      type="text"
+                      placeholder="🔍 Tìm kiếm tên đăng nhập..."
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 12px',
+                        paddingRight: '30px',
+                        fontSize: '12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s',
+                        background: '#f8fafc'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
+                      onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                    />
+                    {userSearchTerm && (
+                      <button 
+                        type="button"
+                        onClick={() => setUserSearchTerm('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '8px', 
+                    padding: '12px', 
+                    background: '#f8fafc', 
+                    height: '240px', 
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    gap: '8px'
+                  }}>
+                    {users.filter(u => 
+                      u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                      (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
+                    ).length === 0 ? (
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', fontSize: '12px', padding: '20px 0', textAlign: 'center' }}>
+                        <span>Không tìm thấy thành viên phù hợp</span>
+                      </div>
+                    ) : (
+                      users
+                        .filter(u => 
+                          u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                          (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
+                        )
+                        .map((u) => (
+                          <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', background: selectedUserIds.includes(u.id) ? '#e8f0fe' : 'transparent', transition: 'all 0.15s ease' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedUserIds.includes(u.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUserIds(prev => [...prev, u.id]);
+                                } else {
+                                  setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                                }
+                              }}
+                              style={{ accentColor: '#1a73e8' }}
+                            />
+                            <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }} title={`${u.username} (${u.full_name || 'Không tên'})${u.role === 'admin' ? ' [Admin]' : ''}`}>
+                              <strong style={{ color: selectedUserIds.includes(u.id) ? '#1a73e8' : '#334155' }}>{u.username}</strong>
+                              {u.role === 'admin' && (
+                                <span style={{ color: '#ea4335', fontSize: '9px', fontWeight: 'bold', background: '#fce8e6', padding: '1px 4px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
+                                  Ad
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        ))
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
-                    Tỷ lệ hoa hồng thưởng (%) *
-                  </label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    required
-                    placeholder="Ví dụ: 70 cho 70%"
-                    value={bonusRate}
-                    onChange={(e) => setBonusRate(e.target.value)}
-                    style={{ padding: '8px 12px' }}
-                  />
-                </div>
+                {/* Right Column: Settings & Content */}
+                <div style={{ 
+                  flex: '1 2 450px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '16px',
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>
+                      ⚙️ 2. Thiết lập cấu hình chương trình
+                    </span>
+                    {bonuses && bonuses.length > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => handleCopyBonusConfig(bonuses[0])}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#1a73e8',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          padding: 0
+                        }}
+                        title="Sao chép nhanh thông số từ bản ghi thưởng gần đây nhất"
+                      >
+                        ⚡ Dùng cấu hình gần nhất
+                      </button>
+                    )}
+                  </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
-                    Thời gian bắt đầu *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className="form-input"
-                    required
-                    value={bonusStart}
-                    onChange={(e) => setBonusStart(e.target.value)}
-                    style={{ padding: '8px 12px' }}
-                  />
-                </div>
+                  {/* Select template from previous unique programs */}
+                  {bonuses && bonuses.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                        📋 Nhân bản cấu hình mẫu từ chương trình cũ
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            const selected = bonuses.find(b => b.id.toString() === val);
+                            if (selected) {
+                              handleCopyBonusConfig(selected);
+                            }
+                          }
+                        }}
+                        defaultValue=""
+                        style={{
+                          padding: '9px 12px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          background: 'white',
+                          fontSize: '13px',
+                          color: '#334155',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Chọn một cấu hình mẫu cũ --</option>
+                        {getUniqueBonuses().map((b) => (
+                          <option key={b.id} value={b.id}>
+                            [+{(parseFloat(b.bonus_rate) * 100).toFixed(0)}%] {b.description || 'Không mô tả'} ({b.start_date.substring(0, 10)} đến {b.end_date.substring(0, 10)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
-                    Thời gian kết thúc *
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className="form-input"
-                    required
-                    value={bonusEnd}
-                    onChange={(e) => setBonusEnd(e.target.value)}
-                    style={{ padding: '8px 12px' }}
-                  />
-                </div>
+                  {/* Row 1: Commission rate & Timepicker */}
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', width: '100%', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 180px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                        Tỷ lệ hoa hồng thưởng (%) *
+                      </label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        required
+                        min="-50"
+                        max="50"
+                        step="1"
+                        placeholder="Từ -50 đến 50 (vd: 10 cho +10%, -5 cho -5%)"
+                        value={bonusRate}
+                        onChange={(e) => setBonusRate(e.target.value)}
+                        style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                      />
+                    </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--secondary-text)' }}>
-                    Mô tả khuyến mại
-                  </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Ví dụ: Đợt khuyến mại đặc biệt 1/6"
-                    value={bonusDesc}
-                    onChange={(e) => setBonusDesc(e.target.value)}
-                    style={{ padding: '8px 12px' }}
-                  />
-                </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '6px', 
+                      flex: '1 1 180px',
+                      position: 'relative' // Critical to position absolute the calendar popover!
+                    }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                        Thời gian áp dụng *
+                      </label>
+                      
+                      {/* Compact Timepicker Icon and Badge Display */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', height: '40px' }}>
+                        <div 
+                          onClick={() => setShowCalendarDropdown(prev => !prev)}
+                          title="Chọn khoảng ngày áp dụng"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '40px',
+                            height: '40px',
+                            border: showCalendarDropdown ? '2px solid #1a73e8' : '1px solid #dadce0',
+                            borderRadius: '50%',
+                            background: 'white',
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#1a73e8';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!showCalendarDropdown) {
+                              e.currentTarget.style.borderColor = '#dadce0';
+                            }
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          <svg viewBox="0 0 24 24" style={{ fill: '#1a73e8', width: '20px', height: '20px' }}>
+                            <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 3h5v5h-5z" />
+                          </svg>
+                        </div>
 
-                <div style={{ gridColumn: 'span 2', textAlign: 'right' }}>
-                  <button type="submit" className="btn-primary" disabled={addingBonus} style={{ padding: '10px 24px' }}>
-                    {addingBonus ? 'Đang xử lý...' : 'Lưu chương trình'}
-                  </button>
+                        {/* Selected Range badge */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          {bonusStart ? (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: '#e8f0fe',
+                              color: '#1a73e8',
+                              padding: '4px 10px',
+                              borderRadius: '16px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              border: '1px solid #d2e3fc',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span>
+                                📅 {bonusStart} {bonusEnd ? `→ ${bonusEnd}` : ''}
+                              </span>
+                              <button 
+                                type="button" 
+                                onClick={(e) => { e.stopPropagation(); setBonusStart(''); setBonusEnd(''); }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ea4335',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold',
+                                  fontSize: '11px',
+                                  padding: '0 2px',
+                                  lineHeight: 1
+                                }}
+                                title="Xóa chọn"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                              Chưa chọn ngày
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Popover Dropdown Calendar */}
+                      {showCalendarDropdown && (
+                        <>
+                          {/* Invisible backdrop for closing when clicked outside */}
+                          <div 
+                            onClick={() => setShowCalendarDropdown(false)}
+                            style={{
+                              position: 'fixed',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              zIndex: 999,
+                              background: 'transparent',
+                              cursor: 'default'
+                            }}
+                          />
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0, // Align right so calendar pops inwards instead of overflowing out of screen bounds!
+                            zIndex: 1000,
+                            marginTop: '8px',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0,0,0,0.3)',
+                            borderRadius: '12px',
+                            overflow: 'hidden'
+                          }}>
+                            {renderCalendar()}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Description */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                      Mô tả khuyến mại
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ví dụ: Đợt khuyến mại đặc biệt 1/6"
+                      value={bonusDesc}
+                      onChange={(e) => setBonusDesc(e.target.value)}
+                      style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    />
+                  </div>
+
+                  {/* Row 3: Marquee Text */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                      Dòng chữ chạy tại trang chủ của user (Marquee Text)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ví dụ: Bạn đang nhận x2 hoàn tiền từ đợt siêu sale 1/6! Tận dụng ngay..."
+                      value={bonusMarquee}
+                      onChange={(e) => setBonusMarquee(e.target.value)}
+                      style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                    />
+                  </div>
+
+                  {/* Auto apply checkbox */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569', cursor: 'pointer', userSelect: 'none', margin: '4px 0' }} title="Khi có thành viên mới đăng ký tài khoản, hệ thống sẽ tự động kích hoạt chương trình này cho họ nếu thời gian vẫn đang diễn ra.">
+                    <input
+                      type="checkbox"
+                      checked={autoApplyNewUsers}
+                      onChange={(e) => setAutoApplyNewUsers(e.target.checked)}
+                      style={{ accentColor: '#1a73e8', width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span><strong>Tự động áp dụng</strong> chương trình này cho thành viên mới đăng ký sau này</span>
+                  </label>
+
+                  {/* Row 4: Submit Button */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <button type="submit" className="btn-primary" disabled={addingBonus} style={{ padding: '10px 24px', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
+                      {addingBonus ? 'Đang xử lý...' : 'Lưu chương trình'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1007,13 +1517,14 @@ export default function AdminDashboard() {
                       <th style={{ padding: '12px 8px' }}>Thời gian bắt đầu</th>
                       <th style={{ padding: '12px 8px' }}>Thời gian kết thúc</th>
                       <th style={{ padding: '12px 8px' }}>Mô tả</th>
+                      <th style={{ padding: '12px 8px' }}>Dòng chữ chạy (Marquee)</th>
                       <th style={{ padding: '12px 8px' }}>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bonuses.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                        <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
                           Chưa có chương trình thưởng đặc biệt nào được cấu hình.
                         </td>
                       </tr>
@@ -1029,8 +1540,21 @@ export default function AdminDashboard() {
                           <td style={{ padding: '12px 8px' }}>{b.start_date}</td>
                           <td style={{ padding: '12px 8px' }}>{b.end_date}</td>
                           <td style={{ padding: '12px 8px' }}>{b.description || '-'}</td>
-                          <td style={{ padding: '12px 8px' }}>
+                          <td style={{ padding: '12px 8px', fontStyle: b.marquee_text ? 'normal' : 'italic', color: b.marquee_text ? '#202124' : '#999' }}>
+                            {b.marquee_text || 'Không có'}
+                          </td>
+                          <td style={{ padding: '12px 8px', display: 'flex', gap: '8px' }}>
                             <button
+                              type="button"
+                              onClick={() => handleCopyBonusConfig(b)}
+                              className="btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#1a73e8', borderColor: '#1a73e8' }}
+                              title="Sao chép cấu hình này lên form để tạo nhanh chương trình mới"
+                            >
+                              Sao chép
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleDeleteBonus(b.id)}
                               className="btn-primary"
                               style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ea4335', borderColor: '#ea4335' }}

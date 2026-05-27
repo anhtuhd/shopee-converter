@@ -73,6 +73,16 @@ export async function GET(request) {
       userProfile.has_referral_bonus = false;
     }
 
+    // Kiểm tra xem user có chương trình thưởng đặc biệt hoạt động hay không (bao gồm cả marquee_text)
+    const [activeSpecialBonuses] = await db.execute(`
+      SELECT id, bonus_rate, description, marquee_text 
+      FROM special_bonuses 
+      WHERE user_id = ? AND NOW() BETWEEN start_date AND end_date
+      ORDER BY bonus_rate DESC LIMIT 1
+    `, [decoded.userId]);
+
+    userProfile.active_special_bonus = activeSpecialBonuses.length > 0 ? activeSpecialBonuses[0] : null;
+
     const [orders] = await db.execute(
       'SELECT * FROM orders WHERE sub_id1 = ? ORDER BY order_time DESC',
       [users[0].username]
@@ -169,8 +179,14 @@ export async function POST(request) {
     const file = formData.get('bank_qr');
     let bank_qr_path = formData.get('existing_bank_qr') || '';
 
+    // Kiểm tra ảnh QR bắt buộc
+    const hasNewFile = file && typeof file !== 'string' && file.name;
+    if (!hasNewFile && !bank_qr_path) {
+      return NextResponse.json({ error: 'Ảnh QR ngân hàng là bắt buộc khi cập nhật thông tin cá nhân.' }, { status: 400 });
+    }
+
     // Upload ảnh QR lên Cloudinary
-    if (file && typeof file !== 'string' && file.name) {
+    if (hasNewFile) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 

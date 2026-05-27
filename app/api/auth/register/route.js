@@ -5,8 +5,25 @@ import { getConnection } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 
 function validateEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Chỉ chấp nhận định dạng Gmail cá nhân kết thúc bằng @gmail.com
+  const re = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
   return re.test(email);
+}
+
+function normalizeGmail(email) {
+  const lowercase = email.trim().toLowerCase();
+  const parts = lowercase.split('@');
+  let localPart = parts[0];
+  
+  // Loại bỏ tất cả phần mở rộng sau dấu cộng '+'
+  if (localPart.includes('+')) {
+    localPart = localPart.split('+')[0];
+  }
+  
+  // Loại bỏ toàn bộ dấu chấm '.'
+  localPart = localPart.replace(/\./g, '');
+  
+  return `${localPart}@gmail.com`;
 }
 
 function validateUsername(username) {
@@ -23,8 +40,11 @@ export async function POST(request) {
     }
 
     if (!validateEmail(email)) {
-      return NextResponse.json({ error: 'Định dạng email không hợp lệ' }, { status: 400 });
+      return NextResponse.json({ error: 'Hệ thống chỉ chấp nhận địa chỉ Gmail cá nhân hợp lệ (@gmail.com).' }, { status: 400 });
     }
+
+    // Chuẩn hóa Gmail để chống spam đăng ký tài khoản ảo qua bí danh
+    const normalizedEmail = normalizeGmail(email);
 
     const db = await getConnection();
 
@@ -72,9 +92,9 @@ export async function POST(request) {
     }
 
     // Check if email exists
-    const [emailRows] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+    const [emailRows] = await db.execute('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
     if (emailRows.length > 0) {
-      return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 400 });
+      return NextResponse.json({ error: 'Địa chỉ Gmail này (hoặc bí danh tương tự) đã được đăng ký trên hệ thống.' }, { status: 400 });
     }
 
     // Check if username exists
@@ -98,7 +118,7 @@ export async function POST(request) {
     // Insert user - set commission_rate là 0.50, is_verified là 0 (chưa kích hoạt)
     const [insertResult] = await db.execute(
       'INSERT INTO users (username, email, password_hash, commission_rate, is_verified, verification_token, verification_token_expiry) VALUES (?, ?, ?, 0.50, 0, ?, ?)', 
-      [username, email, passwordHash, otp, mysqlExpiry]
+      [username, normalizedEmail, passwordHash, otp, mysqlExpiry]
     );
     const newUserId = insertResult.insertId;
 
@@ -106,6 +126,42 @@ export async function POST(request) {
     if (referrerId && newUserId) {
       await db.execute('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)', [referrerId, newUserId]);
       console.log(`✔ Đã tạo mối liên kết giới thiệu: User ID ${newUserId} được giới thiệu bởi User ID ${referrerId}`);
+    }
+
+    // Kiểm tra và tự động gán chương trình thưởng đặc biệt cho thành viên mới
+    try {
+      const [autoBonusRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_active'");
+      if (autoBonusRows.length > 0 && autoBonusRows[0].setting_value === '1') {
+        const [rateRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_rate'");
+        const [startRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_start'");
+        const [endRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_end'");
+        const [descRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_desc'");
+        const [marqueeRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_marquee'");
+
+        if (rateRows.length > 0 && startRows.length > 0 && endRows.length > 0) {
+          const rateVal = parseFloat(rateRows[0].setting_value);
+          const startVal = startRows[0].setting_value;
+          const endVal = endRows[0].setting_value;
+          const descVal = descRows.length > 0 ? descRows[0].setting_value : '';
+          const marqueeVal = marqueeRows.length > 0 ? marqueeRows[0].setting_value : '';
+
+          // Lấy thời gian hiện tại theo GMT+7 của hệ thống để so sánh chính xác với startVal/endVal
+          const nowGmt7 = new Date(Date.now() + 7 * 60 * 60 * 1000);
+          const nowStr = nowGmt7.toISOString().replace('T', ' ').slice(0, 19);
+
+          if (nowStr >= startVal && nowStr <= endVal) {
+            await db.execute(
+              "INSERT INTO special_bonuses (user_id, bonus_rate, start_date, end_date, description, marquee_text) VALUES (?, ?, ?, ?, ?, ?)",
+              [newUserId, rateVal, startVal, endVal, descVal, marqueeVal]
+            );
+            console.log(`✔ Tự động gán chương trình thưởng đặc biệt cho thành viên mới: ${username}`);
+          } else {
+            console.log(`ℹ Chương trình thưởng đặc biệt tự động không nằm trong thời gian hiệu lực (Thời gian hiện tại GMT+7: ${nowStr}, Hiệu lực: ${startVal} đến ${endVal})`);
+          }
+        }
+      }
+    } catch (autoBonusErr) {
+      console.error('Error auto-applying special bonus to registered user:', autoBonusErr);
     }
 
     // Gửi email mã OTP (SMTP ưu tiên, Resend dự phòng)

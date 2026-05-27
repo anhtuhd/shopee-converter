@@ -92,9 +92,20 @@ export default function Home() {
 
       const affiliateId = user ? (user.custom_affiliate_id || data.affiliateId || '17399820370') : (data.guestAffiliateId || '17399820370');
       const subId = user ? user.username : '';
-      const encodedLink = encodeURIComponent(data.finalLink);
-
-      const result = `https://s.shopee.vn/an_redir?utm_medium=affiliates&affiliate_id=${affiliateId}&sub_id=${subId}&origin_link=${encodedLink}`;
+      
+      let result;
+      const isShortLink = data.finalLink.includes('s.shopee.vn') || 
+                          data.finalLink.includes('shope.ee') || 
+                          data.finalLink.includes('shp.ee') || 
+                          data.finalLink.includes('vn.shp.ee');
+                          
+      if (isShortLink) {
+        // Fallback an toàn: Sử dụng trực tiếp link rút gọn để tránh lỗi lồng nhau của Shopee Affiliate
+        result = data.finalLink;
+      } else {
+        const encodedLink = encodeURIComponent(data.finalLink);
+        result = `https://s.shopee.vn/an_redir?utm_medium=affiliates&affiliate_id=${affiliateId}&sub_id=${subId}&origin_link=${encodedLink}`;
+      }
       
       try {
         const shortenRes = await fetch('/api/shorten', {
@@ -172,7 +183,26 @@ export default function Home() {
   const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
 
   return (
-    <div className="main-container">
+    <div style={{ width: '100%' }}>
+      {user && user.active_special_bonus && user.active_special_bonus.marquee_text && (
+        <div className="special-marquee-bar" style={{
+          width: '100%',
+          background: '#f0f7ff', // Soft light matching blue background
+          color: '#1a73e8',      // Premium blue Google text
+          borderBottom: '1px solid #d2e3fc', // Subtle matching blue border
+          padding: '8px 0',
+          fontSize: '13px',
+          fontWeight: '600',
+          overflow: 'hidden',
+          boxSizing: 'border-box'
+        }}>
+          <div className="marquee-content">
+            🎉 {user.active_special_bonus.marquee_text} 🎉
+          </div>
+        </div>
+      )}
+
+      <div className="main-container" style={{ minHeight: 'calc(100vh - 110px)', paddingTop: '6vh' }}>
 
       <div className="home-brand-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px', gap: '12px', textAlign: 'center' }}>
         <h1 style={{ 
@@ -347,6 +377,7 @@ export default function Home() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

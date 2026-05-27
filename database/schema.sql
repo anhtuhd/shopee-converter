@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS special_bonuses (
     start_date DATETIME NOT NULL,
     end_date DATETIME NOT NULL,
     description VARCHAR(255) DEFAULT NULL,
+    marquee_text VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -90,6 +91,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_sub_id1 ON orders(sub_id1);
 CREATE INDEX IF NOT EXISTS idx_orders_referrer_id ON orders(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status_completed ON orders(status, completed_time);
 CREATE INDEX IF NOT EXISTS idx_bonuses_user_dates ON special_bonuses(user_id, start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_orders_user_balance ON orders(sub_id1, status, user_commission);
+CREATE INDEX IF NOT EXISTS idx_orders_referrer_balance ON orders(referrer_id, referrer_payout_status, status, referrer_commission);
 
 CREATE TABLE IF NOT EXISTS payout_bills (
     id INT AUTO_INCREMENT PRIMARY KEY,
