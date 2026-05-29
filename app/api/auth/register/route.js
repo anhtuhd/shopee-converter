@@ -137,6 +137,7 @@ export async function POST(request) {
         const [endRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_end'");
         const [descRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_desc'");
         const [marqueeRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_marquee'");
+        const [showForGuestsRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'auto_bonus_show_for_guests'");
 
         if (rateRows.length > 0 && startRows.length > 0 && endRows.length > 0) {
           const rateVal = parseFloat(rateRows[0].setting_value);
@@ -144,6 +145,7 @@ export async function POST(request) {
           const endVal = endRows[0].setting_value;
           const descVal = descRows.length > 0 ? descRows[0].setting_value : '';
           const marqueeVal = marqueeRows.length > 0 ? marqueeRows[0].setting_value : '';
+          const showForGuestsVal = showForGuestsRows.length > 0 ? parseInt(showForGuestsRows[0].setting_value) || 0 : 0;
 
           // Lấy thời gian hiện tại theo GMT+7 của hệ thống để so sánh chính xác với startVal/endVal
           const nowGmt7 = new Date(Date.now() + 7 * 60 * 60 * 1000);
@@ -151,8 +153,8 @@ export async function POST(request) {
 
           if (nowStr >= startVal && nowStr <= endVal) {
             await db.execute(
-              "INSERT INTO special_bonuses (user_id, bonus_rate, start_date, end_date, description, marquee_text) VALUES (?, ?, ?, ?, ?, ?)",
-              [newUserId, rateVal, startVal, endVal, descVal, marqueeVal]
+              "INSERT INTO special_bonuses (user_id, bonus_rate, start_date, end_date, description, marquee_text, show_for_guests) VALUES (?, ?, ?, ?, ?, ?, ?)",
+              [newUserId, rateVal, startVal, endVal, descVal, marqueeVal, showForGuestsVal]
             );
             console.log(`✔ Tự động gán chương trình thưởng đặc biệt cho thành viên mới: ${username}`);
           } else {

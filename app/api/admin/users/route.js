@@ -21,12 +21,20 @@ export async function GET(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page')) || 1;
-  const limit = 10;
-  const offset = (page - 1) * limit;
+  const limitParam = searchParams.get('limit');
 
   try {
     const db = await getConnection();
+    
+    if (limitParam === 'all') {
+      const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at FROM users ORDER BY username ASC');
+      return NextResponse.json({ users: rows });
+    }
+
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
     const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
     const [countRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     

@@ -24,7 +24,25 @@ async function getUserFromToken(request) {
 
 export async function GET(request) {
   const decoded = await getUserFromToken(request);
-  if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!decoded) {
+    try {
+      const db = await getConnection();
+      // Query active special bonuses that are marked to show for guests
+      const [activeGuestBonuses] = await db.execute(`
+        SELECT id, bonus_rate, description, marquee_text 
+        FROM special_bonuses 
+        WHERE show_for_guests = 1 AND NOW() BETWEEN start_date AND end_date
+        ORDER BY id DESC
+      `);
+      
+      return NextResponse.json({ 
+        user: null, 
+        guest_marquee_bonuses: activeGuestBonuses 
+      }, { status: 200 });
+    } catch (e) {
+      return NextResponse.json({ user: null, guest_marquee_bonuses: [] }, { status: 200 });
+    }
+  }
 
   try {
     const db = await getConnection();
@@ -73,14 +91,15 @@ export async function GET(request) {
       userProfile.has_referral_bonus = false;
     }
 
-    // Kiểm tra xem user có chương trình thưởng đặc biệt hoạt động hay không (bao gồm cả marquee_text)
+    // Kiểm tra tất cả các chương trình thưởng đặc biệt hoạt động của user VÀ các thông báo toàn hệ thống (show_for_guests = 1)
     const [activeSpecialBonuses] = await db.execute(`
-      SELECT id, bonus_rate, description, marquee_text 
+      SELECT id, bonus_rate, description, marquee_text, show_for_guests 
       FROM special_bonuses 
-      WHERE user_id = ? AND NOW() BETWEEN start_date AND end_date
-      ORDER BY bonus_rate DESC LIMIT 1
+      WHERE (user_id = ? OR show_for_guests = 1) AND NOW() BETWEEN start_date AND end_date
+      ORDER BY id DESC
     `, [decoded.userId]);
 
+    userProfile.active_special_bonuses = activeSpecialBonuses;
     userProfile.active_special_bonus = activeSpecialBonuses.length > 0 ? activeSpecialBonuses[0] : null;
 
     const [orders] = await db.execute(

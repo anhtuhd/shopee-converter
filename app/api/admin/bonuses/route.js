@@ -33,6 +33,7 @@ export async function GET(request) {
         DATE_FORMAT(sb.end_date, '%Y-%m-%d %H:%i:%s') as end_date, 
         sb.description, 
         sb.marquee_text,
+        sb.show_for_guests,
         sb.created_at
       FROM special_bonuses sb
       JOIN users u ON sb.user_id = u.id
@@ -52,9 +53,9 @@ export async function POST(request) {
   }
 
   try {
-    const { userId, userIds, bonusRate, startDate, endDate, description, marqueeText, autoApply } = await request.json();
+    const { userId, userIds, bonusRate, startDate, endDate, description, marqueeText, showForGuests, autoApply } = await request.json();
 
-    if ((!userId && !userIds) || bonusRate === undefined || bonusRate === null || bonusRate === '' || !startDate || !endDate) {
+    if ((!userId && !userIds && !showForGuests) || bonusRate === undefined || bonusRate === null || bonusRate === '' || !startDate || !endDate) {
       return NextResponse.json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc' }, { status: 400 });
     }
 
@@ -64,16 +65,19 @@ export async function POST(request) {
     }
 
     const db = await getConnection();
+    const adminUser = await checkAdmin(request);
     
     // Determine the list of target user IDs
     let targetUserIds = [];
     if (userIds === 'all' || userId === 'all') {
       const [allUsers] = await db.execute("SELECT id FROM users");
       targetUserIds = allUsers.map(u => u.id);
-    } else if (Array.isArray(userIds)) {
+    } else if (Array.isArray(userIds) && userIds.length > 0) {
       targetUserIds = userIds.map(id => parseInt(id)).filter(id => !isNaN(id));
     } else if (userId) {
       targetUserIds = [parseInt(userId)];
+    } else if (showForGuests && adminUser) {
+      targetUserIds = [adminUser.userId];
     }
 
     if (targetUserIds.length === 0) {
@@ -92,12 +96,12 @@ export async function POST(request) {
 
     // Insert special bonus for each target user
     const insertQuery = `
-      INSERT INTO special_bonuses (user_id, bonus_rate, start_date, end_date, description, marquee_text)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO special_bonuses (user_id, bonus_rate, start_date, end_date, description, marquee_text, show_for_guests)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     for (const uid of targetUserIds) {
-      await db.execute(insertQuery, [uid, rate, finalStartDate, finalEndDate, description || '', marqueeText || '']);
+      await db.execute(insertQuery, [uid, rate, finalStartDate, finalEndDate, description || '', marqueeText || '', showForGuests ? 1 : 0]);
     }
 
     // Save to global settings if autoApply is enabled
@@ -114,6 +118,7 @@ export async function POST(request) {
       await saveSetting('auto_bonus_end', finalEndDate);
       await saveSetting('auto_bonus_desc', description || '');
       await saveSetting('auto_bonus_marquee', marqueeText || '');
+      await saveSetting('auto_bonus_show_for_guests', showForGuests ? '1' : '0');
     } else {
       await db.execute(
         "INSERT INTO settings (setting_key, setting_value) VALUES ('auto_bonus_active', '0') ON DUPLICATE KEY UPDATE setting_value = '0'"

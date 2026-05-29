@@ -12,6 +12,7 @@ export default function Home() {
   const [orders, setOrders] = useState([]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [guestMarqueeBonuses, setGuestMarqueeBonuses] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -25,11 +26,18 @@ export default function Home() {
         if (data.user) {
           setUser(data.user);
           setOrders(data.orders || []);
+        } else {
+          setUser(null);
+          setOrders([]);
+          if (data.guest_marquee_bonuses) {
+            setGuestMarqueeBonuses(data.guest_marquee_bonuses);
+          }
         }
       })
       .catch(() => {
         setUser(null);
         setOrders([]);
+        setGuestMarqueeBonuses([]);
       });
   }, []);
 
@@ -182,9 +190,31 @@ export default function Home() {
   const totalCompleted = orders.filter(o => o.status === 'Hoàn thành').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
   const totalPaid = orders.filter(o => o.status === 'Đã thanh toán').reduce((acc, o) => acc + Number(o.user_commission || o.total_commission), 0);
 
+  // Get active marquee texts
+  const getActiveMarqueeTexts = () => {
+    if (user) {
+      if (user.active_special_bonuses && user.active_special_bonuses.length > 0) {
+        return user.active_special_bonuses
+          .map(b => b.marquee_text)
+          .filter(text => text && text.trim() !== '');
+      } else if (user.active_special_bonus && user.active_special_bonus.marquee_text) {
+        return [user.active_special_bonus.marquee_text];
+      }
+    } else {
+      if (guestMarqueeBonuses && guestMarqueeBonuses.length > 0) {
+        return guestMarqueeBonuses
+          .map(b => b.marquee_text)
+          .filter(text => text && text.trim() !== '');
+      }
+    }
+    return [];
+  };
+
+  const marqueeTexts = getActiveMarqueeTexts();
+
   return (
     <div style={{ width: '100%' }}>
-      {user && user.active_special_bonus && user.active_special_bonus.marquee_text && (
+      {marqueeTexts.length > 0 && (
         <div className="special-marquee-bar" style={{
           width: '100%',
           background: '#f0f7ff', // Soft light matching blue background
@@ -197,7 +227,11 @@ export default function Home() {
           boxSizing: 'border-box'
         }}>
           <div className="marquee-content">
-            🎉 {user.active_special_bonus.marquee_text} 🎉
+            {marqueeTexts.map((text, idx) => (
+              <span key={idx}>
+                🎉 {text} 🎉 {idx < marqueeTexts.length - 1 && <span style={{ margin: '0 24px', opacity: 0.5 }}>•</span>}
+              </span>
+            ))}
           </div>
         </div>
       )}
@@ -377,6 +411,117 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* SEO and AI Search Optimization Section */}
+      <section style={{
+        marginTop: '56px',
+        width: '100%',
+        maxWidth: '800px',
+        padding: '0 16px',
+        boxSizing: 'border-box',
+        textAlign: 'left'
+      }}>
+        <hr style={{ border: 'none', borderTop: '1px solid #dfe1e5', marginBottom: '40px' }} />
+        
+        <h2 style={{
+          fontSize: '28px',
+          fontWeight: '700',
+          color: '#202124',
+          marginBottom: '12px',
+          textAlign: 'center',
+          letterSpacing: '-0.5px'
+        }}>
+          PiShare - Công Cụ Rút Gọn Link & Hoàn Tiền Shopee Uy Tín
+        </h2>
+        
+        <p style={{
+          fontSize: '15px',
+          color: '#5f6368',
+          lineHeight: '1.6',
+          textAlign: 'center',
+          marginBottom: '36px',
+          maxWidth: '640px',
+          margin: '0 auto 36px auto'
+        }}>
+          Hệ thống tối ưu giúp bạn chuyển đổi link Shopee Affiliate cá nhân, rút gọn link mua sắm nhanh chóng và nhận chiết khấu hoa hồng hấp dẫn lên đến 100% hoàn toàn tự động.
+        </p>
+
+        {/* Feature Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '24px',
+          marginBottom: '48px'
+        }}>
+          <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1a73e8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⚡ Chuyển đổi siêu tốc
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.5', margin: 0 }}>
+              Chỉ cần dán link Shopee, PiShare tự động chuyển đổi thành link affiliate chứa ID của bạn hoặc ID hệ thống ngay lập tức.
+            </p>
+          </div>
+          <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#34a853', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              💰 Hoàn tiền tự động
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.5', margin: 0 }}>
+              Cơ chế đối soát thông minh giúp bạn nhận được phần lớn hoa hồng chiết khấu từ các đơn hàng Shopee đã mua qua link.
+            </p>
+          </div>
+          <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#fbbc05', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🛡️ An toàn & Minh bạch
+            </h3>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.5', margin: 0 }}>
+              Lịch sử đơn hàng, hoa hồng tạm tính và trạng thái thanh toán được thống kê rõ ràng trực tiếp trên trang cá nhân của bạn.
+            </p>
+          </div>
+        </div>
+
+        {/* FAQ Accordion - AI Search Goldmine */}
+        <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#202124', marginBottom: '24px' }}>
+          Câu hỏi thường gặp (FAQ) & Hướng dẫn sử dụng
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
+          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '20px' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#202124', marginBottom: '8px' }}>
+              PiShare là gì? Hoạt động như thế nào?
+            </h4>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.6', margin: 0 }}>
+              PiShare là dịch vụ web hỗ trợ chuyển đổi liên kết Shopee thông thường thành liên kết tiếp thị liên kết (Shopee Affiliate). Khi bạn hoặc người mua nhấp vào liên kết đã chuyển đổi và hoàn tất mua hàng trên Shopee, Shopee sẽ chi trả một khoản hoa hồng tiếp thị liên kết và PiShare sẽ tự động đối soát, cộng dồn phần hoa hồng này vào tài khoản của bạn để thanh toán lại định kỳ.
+            </p>
+          </div>
+
+          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '20px' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#202124', marginBottom: '8px' }}>
+              Làm sao để tôi nhận được hoa hồng hoàn tiền từ Shopee?
+            </h4>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.6', margin: 0 }}>
+              Rất đơn giản! Bạn chỉ cần đăng ký tài khoản tại PiShare, dán link sản phẩm Shopee muốn mua vào thanh công cụ tìm kiếm trên trang chủ để chuyển đổi link. Sau đó, sử dụng link kết quả để mua hàng. Đồng thời, hãy truy cập vào trang cá nhân để cập nhật Mã QR tài khoản ngân hàng của bạn. Số tiền hoa hồng tích lũy sẽ được chuyển khoản tự động đến bạn vào ngày 15 hàng tháng.
+            </p>
+          </div>
+
+          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '20px' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#202124', marginBottom: '8px' }}>
+              Tôi có thể tự mua hàng qua link tiếp thị liên kết của mình để nhận chiết khấu không?
+            </h4>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.6', margin: 0 }}>
+              Hoàn toàn được! Cơ chế của PiShare cho phép bạn tự tạo link và tự mua sắm để nhận hoa hồng hoàn tiền (tự mua hàng tiết kiệm). Đây là một giải pháp cực kỳ thông minh giúp bạn mua lẻ với mức giá sỉ ưu đãi nhờ nhận lại chiết khấu hoa hồng tiếp thị từ Shopee.
+            </p>
+          </div>
+
+          <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '20px' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#202124', marginBottom: '8px' }}>
+              Việc rút gọn link Shopee và nhận hoa hồng tại PiShare có an toàn không?
+            </h4>
+            <p style={{ fontSize: '13.5px', color: '#5f6368', lineHeight: '1.6', margin: 0 }}>
+              Tuyệt đối an toàn và bảo mật. PiShare sử dụng dữ liệu đối soát chính thống từ hệ thống Shopee Affiliate thông qua khóa mã hóa SubID, giúp đảm bảo các giao dịch được ghi nhận chính xác 100%. Thông tin tài khoản ngân hàng và thông tin cá nhân của bạn cũng được bảo mật nghiêm ngặt.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
     </div>
   );

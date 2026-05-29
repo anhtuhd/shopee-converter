@@ -14,6 +14,8 @@ export default function AdminDashboard() {
 
   // Users
   const [users, setUsers] = useState([]);
+  const [allUsersForBonus, setAllUsersForBonus] = useState([]);
+  const [showForGuests, setShowForGuests] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [editCommission, setEditCommission] = useState('');
   const [editCustomAffiliateId, setEditCustomAffiliateId] = useState('');
@@ -162,10 +164,23 @@ export default function AdminDashboard() {
       fetchPayouts();
     } else if (activeTab === 'bonuses') {
       fetchBonuses();
+      fetchAllUsersForBonus();
     } else if (activeTab === 'bills') {
       fetchBills();
     }
   }, [activeTab, cutoffDate]);
+
+  const fetchAllUsersForBonus = async () => {
+    try {
+      const res = await fetch('/api/admin/users?limit=all');
+      const data = await res.json();
+      if (res.ok) {
+        setAllUsersForBonus(data.users || []);
+      }
+    } catch (err) {
+      console.error('Error fetching all users for bonus:', err);
+    }
+  };
 
   const fetchBonuses = async () => {
     try {
@@ -180,7 +195,7 @@ export default function AdminDashboard() {
   };
 
   const handleSelectAllUsers = () => {
-    const filteredUsers = users.filter(u => 
+    const filteredUsers = allUsersForBonus.filter(u => 
       u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
       (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
     );
@@ -192,7 +207,7 @@ export default function AdminDashboard() {
     if (!userSearchTerm) {
       setSelectedUserIds([]);
     } else {
-      const filteredUsers = users.filter(u => 
+      const filteredUsers = allUsersForBonus.filter(u => 
         u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
         (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
       );
@@ -339,8 +354,8 @@ export default function AdminDashboard() {
 
   const handleAddBonus = async (e) => {
     e.preventDefault();
-    if (selectedUserIds.length === 0 || bonusRate === '' || !bonusStart || !bonusEnd) {
-      alert('Vui lòng chọn ít nhất một thành viên và nhập đầy đủ thông tin bắt buộc');
+    if ((!showForGuests && selectedUserIds.length === 0) || bonusRate === '' || !bonusStart || !bonusEnd) {
+      alert('Vui lòng chọn ít nhất một thành viên (hoặc tích chọn Hiển thị cho khách vãng lai) và nhập đầy đủ thông tin bắt buộc');
       return;
     }
 
@@ -363,6 +378,7 @@ export default function AdminDashboard() {
           endDate: bonusEnd,
           description: bonusDesc,
           marqueeText: bonusMarquee,
+          showForGuests: showForGuests,
           autoApply: autoApplyNewUsers
         })
       });
@@ -375,6 +391,7 @@ export default function AdminDashboard() {
         setBonusEnd('');
         setBonusDesc('');
         setBonusMarquee('');
+        setShowForGuests(false);
         setAutoApplyNewUsers(false);
         await fetchBonuses();
       } else {
@@ -394,6 +411,7 @@ export default function AdminDashboard() {
     setBonusEnd(b.end_date.substring(0, 10));
     setBonusDesc(b.description || '');
     setBonusMarquee(b.marquee_text || '');
+    setShowForGuests(b.show_for_guests === 1 || b.show_for_guests === true);
     
     // Smooth scroll back to form
     const formElement = document.querySelector('form');
@@ -408,7 +426,7 @@ export default function AdminDashboard() {
     const seen = new Set();
     const unique = [];
     for (const b of bonuses) {
-      const key = `${b.bonus_rate}-${b.start_date}-${b.end_date}-${b.description || ''}-${b.marquee_text || ''}`;
+      const key = `${b.bonus_rate}-${b.start_date}-${b.end_date}-${b.description || ''}-${b.marquee_text || ''}-${b.show_for_guests || 0}`;
       if (!seen.has(key)) {
         seen.add(key);
         unique.push(b);
@@ -1196,7 +1214,7 @@ export default function AdminDashboard() {
                     gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
                     gap: '8px'
                   }}>
-                    {users.filter(u => 
+                    {allUsersForBonus.filter(u => 
                       u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                       (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
                     ).length === 0 ? (
@@ -1204,7 +1222,7 @@ export default function AdminDashboard() {
                         <span>Không tìm thấy thành viên phù hợp</span>
                       </div>
                     ) : (
-                      users
+                      allUsersForBonus
                         .filter(u => 
                           u.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
                           (u.full_name && u.full_name.toLowerCase().includes(userSearchTerm.toLowerCase()))
@@ -1496,6 +1514,17 @@ export default function AdminDashboard() {
                     <span><strong>Tự động áp dụng</strong> chương trình này cho thành viên mới đăng ký sau này</span>
                   </label>
 
+                  {/* Guest marquee checkbox */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569', cursor: 'pointer', userSelect: 'none', margin: '4px 0' }} title="Cho phép hiển thị dòng chữ chạy này kể cả khi khách vãng lai chưa đăng nhập tài khoản.">
+                    <input
+                      type="checkbox"
+                      checked={showForGuests}
+                      onChange={(e) => setShowForGuests(e.target.checked)}
+                      style={{ accentColor: '#1a73e8', width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <span><strong>Hiển thị cho khách vãng lai</strong> (Chưa đăng nhập tài khoản)</span>
+                  </label>
+
                   {/* Row 4: Submit Button */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                     <button type="submit" className="btn-primary" disabled={addingBonus} style={{ padding: '10px 24px', borderRadius: '6px', fontSize: '14px', fontWeight: '600' }}>
@@ -1541,7 +1570,16 @@ export default function AdminDashboard() {
                           <td style={{ padding: '12px 8px' }}>{b.end_date}</td>
                           <td style={{ padding: '12px 8px' }}>{b.description || '-'}</td>
                           <td style={{ padding: '12px 8px', fontStyle: b.marquee_text ? 'normal' : 'italic', color: b.marquee_text ? '#202124' : '#999' }}>
-                            {b.marquee_text || 'Không có'}
+                            {b.marquee_text ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span>{b.marquee_text}</span>
+                                {(b.show_for_guests === 1 || b.show_for_guests === true) && (
+                                  <span style={{ fontSize: '10px', color: '#1a73e8', background: '#e8f0fe', padding: '1px 6px', borderRadius: '4px', alignSelf: 'flex-start', fontWeight: 'bold' }}>
+                                    Hiển thị cho khách
+                                  </span>
+                                )}
+                              </div>
+                            ) : 'Không có'}
                           </td>
                           <td style={{ padding: '12px 8px', display: 'flex', gap: '8px' }}>
                             <button

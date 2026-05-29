@@ -280,7 +280,7 @@ export async function POST(request) {
         // Nếu trạng thái trong DB đã là 'Đã thanh toán', ta kiểm tra xem trạng thái mới từ Shopee có phải là Đã hủy/Trả hàng/Hoàn tiền không
         if (existing.status === 'Đã thanh toán') {
           if (isCancelledStatus(status)) {
-            toUpdateMap.set(existing.id, 'Yêu cầu khấu trừ');
+            toUpdateMap.set(existing.id, { status: 'Yêu cầu khấu trừ' });
             
             // Nếu người giới thiệu cũng đã nhận hoa hồng 'Đã thanh toán' cho đơn này, ta cũng chuyển thành 'Yêu cầu khấu trừ' để trừ tiền đợt sau
             if (existing.referrer_id && existing.referrer_payout_status === 'Đã thanh toán') {
@@ -302,7 +302,18 @@ export async function POST(request) {
           }
         }
 
-        toUpdateMap.set(existing.id, status);
+        toUpdateMap.set(existing.id, {
+          status,
+          completed_time,
+          price,
+          quantity,
+          order_value,
+          total_commission,
+          user_commission,
+          referrer_id,
+          referrer_commission,
+          referrer_payout_status
+        });
       } else {
         // Nếu trùng key ngay trong cùng một file upload, chỉ cập nhật trạng thái
         if (toInsertMap.has(key)) {
@@ -340,14 +351,47 @@ export async function POST(request) {
       );
     }
 
-    // Bulk UPDATE — chỉ cập nhật cột status cho các đơn trùng key (trừ đã thanh toán)
+    // Bulk UPDATE — cập nhật các thông tin đơn hàng trùng key bao gồm trạng thái, thời gian hoàn thành và hoa hồng (trừ đã thanh toán)
     const BATCH_SIZE = 50;
     for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
       const batch = toUpdate.slice(i, i + BATCH_SIZE);
-      for (const [id, status] of batch) {
-        await db.execute(`
-          UPDATE orders SET status = ? WHERE id = ?
-        `, [status, id]);
+      for (const [id, data] of batch) {
+        if (typeof data === 'string') {
+          await db.execute(`
+            UPDATE orders SET status = ? WHERE id = ?
+          `, [data, id]);
+        } else if (data.status === 'Yêu cầu khấu trừ') {
+          await db.execute(`
+            UPDATE orders SET status = ? WHERE id = ?
+          `, [data.status, id]);
+        } else {
+          await db.execute(`
+            UPDATE orders SET 
+              status = ?, 
+              completed_time = ?, 
+              price = ?, 
+              quantity = ?, 
+              order_value = ?, 
+              total_commission = ?, 
+              user_commission = ?, 
+              referrer_id = ?, 
+              referrer_commission = ?, 
+              referrer_payout_status = ?
+            WHERE id = ?
+          `, [
+            data.status,
+            data.completed_time,
+            data.price,
+            data.quantity,
+            data.order_value,
+            data.total_commission,
+            data.user_commission,
+            data.referrer_id,
+            data.referrer_commission,
+            data.referrer_payout_status,
+            id
+          ]);
+        }
       }
     }
 

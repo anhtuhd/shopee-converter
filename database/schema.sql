@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS special_bonuses (
     end_date DATETIME NOT NULL,
     description VARCHAR(255) DEFAULT NULL,
     marquee_text VARCHAR(255) DEFAULT NULL,
+    show_for_guests TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

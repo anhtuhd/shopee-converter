@@ -35,8 +35,30 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "PiShare",
+    "url": "https://pishare.site",
+    "description": "Hệ thống chuyển đổi link Shopee Affiliate chuyên nghiệp, rút gọn link và nhận hoàn tiền mua sắm trực tuyến tự động.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "All",
+    "browserRequirements": "Requires HTML5, Javascript, CSS3",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "VND"
+    }
+  };
+
   return (
     <html lang="vi" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body suppressHydrationWarning>
         <Navbar />
         <main>{children}</main>
