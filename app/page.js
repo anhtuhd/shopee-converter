@@ -15,6 +15,7 @@ export default function Home() {
   const [guestMarqueeBonuses, setGuestMarqueeBonuses] = useState([]);
   const [marqueeSpeedDesktop, setMarqueeSpeedDesktop] = useState(12);
   const [marqueeSpeedMobile, setMarqueeSpeedMobile] = useState(8);
+  const [showGuestWarningModal, setShowGuestWarningModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function Home() {
   };
 
   const handleConvert = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError('');
     setConvertedLink('');
     setProductInfo(null);
@@ -95,21 +96,21 @@ export default function Home() {
     }
 
     if (!user) {
-      const confirmConvert = window.confirm(
-        '⚠️ Chú ý: Bạn chưa đăng nhập tài khoản! Các đơn hàng phát sinh từ link chuyển đổi này sẽ không được tính hoàn tiền cho bạn. Bạn vẫn muốn tiếp tục?'
-      );
-      if (!confirmConvert) {
-        return;
-      }
+      setShowGuestWarningModal(true);
+      return;
     }
 
+    performConvert(trimmedLink);
+  };
+
+  const performConvert = async (trimmedLink) => {
     setLoading(true);
 
     try {
       const res = await fetch('/api/resolve-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link })
+        body: JSON.stringify({ link: trimmedLink })
       });
       const data = await res.json();
 
@@ -247,7 +248,7 @@ export default function Home() {
           overflow: 'hidden',
           boxSizing: 'border-box'
         }}>
-          <style>{`
+          <style dangerouslySetInnerHTML={{ __html: `
             .marquee-content-custom {
               animation-duration: ${marqueeSpeedDesktop}s !important;
             }
@@ -256,7 +257,7 @@ export default function Home() {
                 animation-duration: ${marqueeSpeedMobile}s !important;
               }
             }
-          `}</style>
+          ` }} />
           <div className="marquee-content marquee-content-custom">
             {marqueeTexts.map((text, idx) => (
               <span key={idx}>
@@ -554,6 +555,134 @@ export default function Home() {
         </div>
       </section>
     </div>
+
+      {/* Custom Guest Warning Modal */}
+      {showGuestWarningModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(4px)',
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            width: '100%',
+            maxWidth: '460px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e5e7eb',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            {/* Warning Icon Container */}
+            <div style={{
+              background: '#fff3cd',
+              borderRadius: '50%',
+              width: '60px',
+              height: '60px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '20px',
+              boxShadow: '0 4px 10px rgba(255, 193, 7, 0.2)'
+            }}>
+              <svg viewBox="0 0 24 24" style={{ fill: '#ffc107', width: '32px', height: '32px' }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+              </svg>
+            </div>
+
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px', color: '#202124' }}>
+              Bạn Chưa Đăng Nhập Tài Khoản!
+            </h3>
+            
+            <p style={{ fontSize: '14px', color: '#5f6368', lineHeight: '1.6', marginBottom: '24px', textAlign: 'center' }}>
+              Nếu tiếp tục chuyển đổi link khi chưa đăng nhập, các đơn hàng phát sinh từ link này sẽ <strong>không được hoàn tiền chiết khấu</strong> vào tài khoản của bạn.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGuestWarningModal(false);
+                  router.push('/login');
+                }}
+                className="btn-primary"
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  fontSize: '14px', 
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  backgroundColor: '#1a73e8',
+                  borderColor: '#1a73e8',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                Đăng nhập ngay để nhận hoàn tiền
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGuestWarningModal(false);
+                  performConvert(link.trim());
+                }}
+                className="btn-secondary"
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  fontSize: '14px', 
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#5f6368',
+                  borderColor: '#dfe1e5',
+                  backgroundColor: '#f8f9fa',
+                  cursor: 'pointer'
+                }}
+              >
+                Tôi đồng ý, tiếp tục tạo link khách
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowGuestWarningModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9aa0a6',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  marginTop: '6px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  outline: 'none'
+                }}
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
