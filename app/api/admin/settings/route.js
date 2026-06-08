@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
+import cache from '@/lib/cache';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
 
@@ -64,6 +65,8 @@ export async function POST(request) {
       "INSERT INTO settings (setting_key, setting_value) VALUES ('marquee_speed_mobile', ?) ON DUPLICATE KEY UPDATE setting_value = ?",
       [marquee_speed_mobile || '8', marquee_speed_mobile || '8']
     );
+
+    cache.clear();
 
     return NextResponse.json({ message: 'Cập nhật thành công' });
   } catch (error) {

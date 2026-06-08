@@ -94,6 +94,15 @@ export default function Home() {
       return;
     }
 
+    if (!user) {
+      const confirmConvert = window.confirm(
+        '⚠️ Chú ý: Bạn chưa đăng nhập tài khoản! Các đơn hàng phát sinh từ link chuyển đổi này sẽ không được tính hoàn tiền cho bạn. Bạn vẫn muốn tiếp tục?'
+      );
+      if (!confirmConvert) {
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {

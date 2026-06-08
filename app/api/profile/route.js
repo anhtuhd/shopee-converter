@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
+import cache from '@/lib/cache';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
 
@@ -25,33 +26,59 @@ async function getUserFromToken(request) {
 export async function GET(request) {
   let marqueeSpeedDesktop = 12;
   let marqueeSpeedMobile = 8;
-  try {
-    const db = await getConnection();
-    const [settingRows] = await db.execute(
-      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('marquee_speed', 'marquee_speed_desktop', 'marquee_speed_mobile')"
-    );
-    let legacyMarqueeSpeed = 12;
-    settingRows.forEach(row => {
-      if (row.setting_key === 'marquee_speed') {
-        legacyMarqueeSpeed = parseInt(row.setting_value, 10) || 12;
-      }
-    });
-    marqueeSpeedDesktop = legacyMarqueeSpeed;
-    marqueeSpeedMobile = Math.round(legacyMarqueeSpeed * 0.7) || 8;
-    settingRows.forEach(row => {
-      if (row.setting_key === 'marquee_speed_desktop') {
-        marqueeSpeedDesktop = parseInt(row.setting_value, 10) || legacyMarqueeSpeed;
-      }
-      if (row.setting_key === 'marquee_speed_mobile') {
-        marqueeSpeedMobile = parseInt(row.setting_value, 10) || Math.round(legacyMarqueeSpeed * 0.7);
-      }
-    });
-  } catch (e) {
-    console.error('Error fetching marquee speed settings:', e);
+
+  // 1. Check cache for global settings
+  const cachedSettings = cache.get('global_marquee_settings');
+  if (cachedSettings) {
+    marqueeSpeedDesktop = cachedSettings.desktop;
+    marqueeSpeedMobile = cachedSettings.mobile;
+  } else {
+    try {
+      const db = await getConnection();
+      const [settingRows] = await db.execute(
+        "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('marquee_speed', 'marquee_speed_desktop', 'marquee_speed_mobile')"
+      );
+      let legacyMarqueeSpeed = 12;
+      settingRows.forEach(row => {
+        if (row.setting_key === 'marquee_speed') {
+          legacyMarqueeSpeed = parseInt(row.setting_value, 10) || 12;
+        }
+      });
+      marqueeSpeedDesktop = legacyMarqueeSpeed;
+      marqueeSpeedMobile = Math.round(legacyMarqueeSpeed * 0.7) || 8;
+      settingRows.forEach(row => {
+        if (row.setting_key === 'marquee_speed_desktop') {
+          marqueeSpeedDesktop = parseInt(row.setting_value, 10) || legacyMarqueeSpeed;
+        }
+        if (row.setting_key === 'marquee_speed_mobile') {
+          marqueeSpeedMobile = parseInt(row.setting_value, 10) || Math.round(legacyMarqueeSpeed * 0.7);
+        }
+      });
+
+      // Cache settings for 5 minutes (300 seconds)
+      cache.set('global_marquee_settings', {
+        desktop: marqueeSpeedDesktop,
+        mobile: marqueeSpeedMobile
+      }, 300);
+    } catch (e) {
+      console.error('Error fetching marquee speed settings:', e);
+    }
   }
 
   const decoded = await getUserFromToken(request);
   if (!decoded) {
+    // 2. Check cache for active guest bonuses
+    const cachedGuestBonuses = cache.get('active_guest_bonuses');
+    if (cachedGuestBonuses) {
+      return NextResponse.json({ 
+        user: null, 
+        guest_marquee_bonuses: cachedGuestBonuses,
+        marquee_speed: marqueeSpeedDesktop,
+        marquee_speed_desktop: marqueeSpeedDesktop,
+        marquee_speed_mobile: marqueeSpeedMobile
+      }, { status: 200 });
+    }
+
     try {
       const db = await getConnection();
       // Query active special bonuses that are marked to show for guests
@@ -62,6 +89,9 @@ export async function GET(request) {
         ORDER BY id DESC
       `);
       
+      // Cache guest active bonuses for 5 minutes
+      cache.set('active_guest_bonuses', activeGuestBonuses, 300);
+
       return NextResponse.json({ 
         user: null, 
         guest_marquee_bonuses: activeGuestBonuses,
@@ -128,12 +158,19 @@ export async function GET(request) {
     }
 
     // Kiểm tra tất cả các chương trình thưởng đặc biệt hoạt động của user VÀ các thông báo toàn hệ thống (show_for_guests = 1)
-    const [activeSpecialBonuses] = await db.execute(`
-      SELECT id, bonus_rate, description, marquee_text, show_for_guests 
-      FROM special_bonuses 
-      WHERE (user_id = ? OR show_for_guests = 1) AND NOW() BETWEEN start_date AND end_date
-      ORDER BY id DESC
-    `, [decoded.userId]);
+    const cacheKey = `user_special_bonuses_${decoded.userId}`;
+    let activeSpecialBonuses = cache.get(cacheKey);
+    if (!activeSpecialBonuses) {
+      const [rows] = await db.execute(`
+        SELECT id, bonus_rate, description, marquee_text, show_for_guests 
+        FROM special_bonuses 
+        WHERE (user_id = ? OR show_for_guests = 1) AND NOW() BETWEEN start_date AND end_date
+        ORDER BY id DESC
+      `, [decoded.userId]);
+      activeSpecialBonuses = rows;
+      // Cache user-specific bonuses for 5 minutes
+      cache.set(cacheKey, activeSpecialBonuses, 300);
+    }
 
     userProfile.active_special_bonuses = activeSpecialBonuses;
     userProfile.active_special_bonus = activeSpecialBonuses.length > 0 ? activeSpecialBonuses[0] : null;

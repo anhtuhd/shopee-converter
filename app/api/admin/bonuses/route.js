@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { getConnection } from '@/lib/db';
+import cache from '@/lib/cache';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
 
@@ -125,6 +126,8 @@ export async function POST(request) {
       );
     }
 
+    cache.clear();
+
     return NextResponse.json({ message: `Tạo chương trình thưởng hoàn tiền đặc biệt thành công cho ${targetUserIds.length} thành viên.` });
   } catch (error) {
     console.error('Error creating bonus:', error);
@@ -157,6 +160,8 @@ export async function DELETE(request) {
     } else {
       await db.execute('DELETE FROM special_bonuses WHERE id = ?', [id]);
     }
+
+    cache.clear();
 
     return NextResponse.json({ message: 'Xóa chương trình thưởng thành công' });
   } catch (error) {
