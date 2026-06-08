@@ -549,6 +549,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleQuickUpdateMarqueeSpeed = async (e) => {
+    e.preventDefault();
+    setSettingsStatus('Đang lưu tốc độ...');
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          global_affiliate_id: globalAffiliateId, 
+          guest_affiliate_id: guestAffiliateId,
+          marquee_speed: marqueeSpeed
+        })
+      });
+      if (res.ok) {
+        setSettingsStatus('Lưu tốc độ thành công!');
+        setTimeout(() => setSettingsStatus(''), 3000);
+      } else {
+        setSettingsStatus('Lỗi khi lưu.');
+      }
+    } catch (err) {
+      setSettingsStatus('Lỗi kết nối.');
+    }
+  };
+
   const getFilteredBonuses = () => {
     return bonuses.filter(b => 
       b.username.toLowerCase().includes(bonusSearchTerm.toLowerCase().trim()) ||
@@ -1223,6 +1247,92 @@ export default function AdminDashboard() {
 
         {activeTab === 'bonuses' && (
           <div>
+            {/* Quick Access Marquee Speed Card */}
+            <div style={{ 
+              marginBottom: '24px', 
+              padding: '16px 24px', 
+              border: '1px solid #cce0ff', 
+              borderRadius: '12px', 
+              background: '#f0f7ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  background: '#1a73e8',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(26, 115, 232, 0.25)',
+                  flexShrink: 0
+                }}>
+                  <svg viewBox="0 0 24 24" style={{ fill: 'white', width: '20px', height: '20px' }}>
+                    <path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 12 6a7.92 7.92 0 0 1 6.32 3.12l1.63-1.63A9.87 9.87 0 0 0 12 4a10 10 0 0 0-10 10 10 10 0 0 0 10 10c4.15 0 7.7-2.54 9.17-6.17l-1.23-1.83m-9.33.5l1.64 1.64-4.8 4.8-1.64-1.64 4.8-4.8m.95-3.07a2 2 0 1 1-2.83 2.83 2 2 0 0 1 2.83-2.83z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e3a8a' }}>Cấu hình Tốc độ chạy chữ Marquee</h4>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#1e40af' }}>
+                    Thời gian để chữ chạy hết một vòng (giá trị càng nhỏ chạy càng nhanh, mặc định: 12 giây)
+                  </p>
+                </div>
+              </div>
+              <form onSubmit={handleQuickUpdateMarqueeSpeed} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="number"
+                    value={marqueeSpeed}
+                    onChange={e => setMarqueeSpeed(e.target.value)}
+                    min="2"
+                    max="60"
+                    required
+                    style={{
+                      width: '80px',
+                      padding: '8px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#1e40af', fontWeight: '600' }}>giây</span>
+                </div>
+                <button 
+                  type="submit" 
+                  className="btn-primary" 
+                  style={{ 
+                    padding: '8px 16px', 
+                    fontSize: '13px', 
+                    fontWeight: '600',
+                    borderRadius: '6px',
+                    backgroundColor: '#1a73e8',
+                    borderColor: '#1a73e8'
+                  }}
+                >
+                  Lưu tốc độ
+                </button>
+                {settingsStatus && (
+                  <span style={{ 
+                    fontSize: '13px', 
+                    color: settingsStatus.includes('Lỗi') ? '#ea4335' : '#34a853',
+                    fontWeight: '600',
+                    marginLeft: '8px'
+                  }}>
+                    {settingsStatus}
+                  </span>
+                )}
+              </form>
+            </div>
+
             <div style={{ marginBottom: '24px', padding: '24px', border: '1px solid var(--border-color)', borderRadius: '12px', background: '#f8fafc' }}>
               <h3 style={{ marginBottom: '20px', color: '#0f172a', fontWeight: '700', fontSize: '16px' }}>Thêm Chương Trình Thưởng Hoàn Tiền Đặc Biệt</h3>
               
