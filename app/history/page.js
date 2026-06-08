@@ -10,6 +10,7 @@ function HistoryContent() {
   const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
   const [referral, setReferral] = useState(null);
+  const [referralCurrentPage, setReferralCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -128,53 +129,85 @@ function HistoryContent() {
           </div>
         )}
 
-        {activeTab === 'referrals' && referral && (
-          <div>
-            <h3 style={{ fontSize: '18px', marginBottom: '16px' }}>Lịch sử đơn hàng giới thiệu thụ động</h3>
-            <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
-                    <th style={{ padding: '12px 8px' }}>Mã Đơn</th>
-                    <th style={{ padding: '12px 8px' }}>Người mua</th>
-                    <th style={{ padding: '12px 8px' }}>Thời gian</th>
-                    <th style={{ padding: '12px 8px' }}>Tổng hoa hồng gốc</th>
-                    <th style={{ padding: '12px 8px' }}>Thưởng của bạn (5%)</th>
-                    <th style={{ padding: '12px 8px' }}>Trạng thái đơn gốc</th>
-                    <th style={{ padding: '12px 8px' }}>Trạng thái nhận tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!referral.referralOrders || referral.referralOrders.length === 0 ? (
-                    <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có hoa hồng giới thiệu nào.</td></tr>
-                  ) : (
-                    referral.referralOrders.map((order, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '12px 8px', fontWeight: '500' }}>{order.order_id}</td>
-                        <td style={{ padding: '12px 8px' }}>{order.purchaser}</td>
-                        <td style={{ padding: '12px 8px' }}>{new Date(order.order_time).toLocaleString('vi-VN')}</td>
-                        <td style={{ padding: '12px 8px' }}>{parseFloat(order.total_commission).toLocaleString('vi-VN')} đ</td>
-                        <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#137333' }}>
-                          +{parseFloat(order.referrer_commission).toLocaleString('vi-VN')} đ
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <span className={`status-badge status-${(order.status || '').toLowerCase().replace(/ /g, '-')}`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <span className={`status-badge status-${order.referrer_payout_status === 'Đã thanh toán' ? 'đã-thanh-toán' : 'đang-chờ-xử-lý'}`}>
-                            {order.referrer_payout_status === 'Đã thanh toán' ? 'Đã nhận' : 'Đang chờ'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+        {activeTab === 'referrals' && referral && (() => {
+          const referralOrdersList = referral.referralOrders || [];
+          const referralItemsPerPage = 10;
+          const totalReferralPages = Math.ceil(referralOrdersList.length / referralItemsPerPage) || 1;
+          const activeReferralPage = Math.min(referralCurrentPage, totalReferralPages);
+          const currentReferralOrders = referralOrdersList.slice(
+            (activeReferralPage - 1) * referralItemsPerPage,
+            activeReferralPage * referralItemsPerPage
+          );
+
+          return (
+            <div>
+              <h3 style={{ fontSize: '18px', marginBottom: '16px' }}>Lịch sử đơn hàng giới thiệu thụ động</h3>
+              <div className="table-container" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                      <th style={{ padding: '12px 8px' }}>Mã Đơn</th>
+                      <th style={{ padding: '12px 8px' }}>Người mua</th>
+                      <th style={{ padding: '12px 8px' }}>Thời gian</th>
+                      <th style={{ padding: '12px 8px' }}>Thưởng của bạn (5%)</th>
+                      <th style={{ padding: '12px 8px' }}>Trạng thái đơn gốc</th>
+                      <th style={{ padding: '12px 8px' }}>Trạng thái nhận tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentReferralOrders.length === 0 ? (
+                      <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Chưa có hoa hồng giới thiệu nào.</td></tr>
+                    ) : (
+                      currentReferralOrders.map((order, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '12px 8px', fontWeight: '500' }}>{order.order_id}</td>
+                          <td style={{ padding: '12px 8px' }}>{order.purchaser}</td>
+                          <td style={{ padding: '12px 8px' }}>{new Date(order.order_time).toLocaleString('vi-VN')}</td>
+                          <td style={{ padding: '12px 8px', fontWeight: 'bold', color: '#137333' }}>
+                            +{parseFloat(order.referrer_commission).toLocaleString('vi-VN')} đ
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <span className={`status-badge status-${(order.status || '').toLowerCase().replace(/ /g, '-')}`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <span className={`status-badge status-${order.referrer_payout_status === 'Đã thanh toán' ? 'đã-thanh-toán' : 'đang-chờ-xử-lý'}`}>
+                              {order.referrer_payout_status === 'Đã thanh toán' ? 'Đã nhận' : 'Đang chờ'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {totalReferralPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '16px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setReferralCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={activeReferralPage === 1}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '13px' }}
+                  >
+                    Trang trước
+                  </button>
+                  <span style={{ fontSize: '14px' }}>Trang {activeReferralPage} / {totalReferralPages}</span>
+                  <button
+                    type="button"
+                    onClick={() => setReferralCurrentPage(p => Math.min(p + 1, totalReferralPages))}
+                    disabled={activeReferralPage === totalReferralPages}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '13px' }}
+                  >
+                    Trang sau
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'payments' && (
           <div>
