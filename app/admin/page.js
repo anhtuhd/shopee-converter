@@ -10,7 +10,8 @@ export default function AdminDashboard() {
   // Settings
   const [globalAffiliateId, setGlobalAffiliateId] = useState('');
   const [guestAffiliateId, setGuestAffiliateId] = useState('');
-  const [marqueeSpeed, setMarqueeSpeed] = useState('12');
+  const [marqueeSpeedDesktop, setMarqueeSpeedDesktop] = useState('12');
+  const [marqueeSpeedMobile, setMarqueeSpeedMobile] = useState('8');
   const [settingsStatus, setSettingsStatus] = useState('');
 
   // Users
@@ -92,7 +93,8 @@ export default function AdminDashboard() {
       const setData = await setRes.json();
       setGlobalAffiliateId(setData.global_affiliate_id || '');
       setGuestAffiliateId(setData.guest_affiliate_id || '');
-      setMarqueeSpeed(setData.marquee_speed || '12');
+      setMarqueeSpeedDesktop(setData.marquee_speed_desktop || '12');
+      setMarqueeSpeedMobile(setData.marquee_speed_mobile || '8');
 
       // Fetch users
       await fetchUsers();
@@ -535,7 +537,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           global_affiliate_id: globalAffiliateId, 
           guest_affiliate_id: guestAffiliateId,
-          marquee_speed: marqueeSpeed
+          marquee_speed_desktop: marqueeSpeedDesktop,
+          marquee_speed_mobile: marqueeSpeedMobile
         })
       });
       if (res.ok) {
@@ -559,7 +562,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           global_affiliate_id: globalAffiliateId, 
           guest_affiliate_id: guestAffiliateId,
-          marquee_speed: marqueeSpeed
+          marquee_speed_desktop: marqueeSpeedDesktop,
+          marquee_speed_mobile: marqueeSpeedMobile
         })
       });
       if (res.ok) {
@@ -1218,21 +1222,40 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Tốc độ chạy chữ Marquee (giây)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={marqueeSpeed}
-                  onChange={e => setMarqueeSpeed(e.target.value)}
-                  placeholder="Ví dụ: 12"
-                  min="2"
-                  max="60"
-                  required
-                />
-                <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
-                  Thời gian để chữ chạy hết một vòng (giá trị càng nhỏ chữ chạy càng nhanh, mặc định là 12 giây).
-                </span>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                  <label className="form-label">Tốc độ chạy chữ Marquee - Desktop (giây)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={marqueeSpeedDesktop}
+                    onChange={e => setMarqueeSpeedDesktop(e.target.value)}
+                    placeholder="Mặc định: 12"
+                    min="2"
+                    max="60"
+                    required
+                  />
+                  <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
+                    Thời gian chạy hết một vòng trên máy tính (màn hình rộng, mặc định: 12 giây).
+                  </span>
+                </div>
+
+                <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                  <label className="form-label">Tốc độ chạy chữ Marquee - Mobile (giây)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={marqueeSpeedMobile}
+                    onChange={e => setMarqueeSpeedMobile(e.target.value)}
+                    placeholder="Mặc định: 8"
+                    min="2"
+                    max="60"
+                    required
+                  />
+                  <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
+                    Thời gian chạy hết một vòng trên điện thoại (màn hình hẹp hơn, mặc định: 8 giây).
+                  </span>
+                </div>
               </div>
 
               <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Lưu cài đặt</button>
@@ -1626,49 +1649,80 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Row 3.5: Tốc độ chạy chữ Marquee (giây) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
-                      Tốc độ chạy chữ Marquee (giây)
-                    </label>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={marqueeSpeed}
-                        onChange={e => setMarqueeSpeed(e.target.value)}
-                        placeholder="Ví dụ: 12"
-                        min="2"
-                        max="60"
-                        required
-                        style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', width: '100px', textAlign: 'center' }}
-                      />
-                      <span style={{ fontSize: '13px', color: '#64748b' }}>giây (Thời gian chạy hết một vòng. Số giây càng nhỏ chữ chạy càng nhanh)</span>
-                      <button 
-                        type="button" 
-                        onClick={handleQuickUpdateMarqueeSpeed} 
-                        className="btn-primary" 
-                        style={{ 
-                          padding: '8px 16px', 
-                          fontSize: '13px', 
-                          fontWeight: '600',
-                          borderRadius: '6px',
-                          backgroundColor: '#1a73e8',
-                          borderColor: '#1a73e8',
-                          marginLeft: 'auto'
-                        }}
-                      >
-                        Cập nhật tốc độ
-                      </button>
-                      {settingsStatus && (
-                        <span style={{ 
-                          fontSize: '13px', 
-                          color: settingsStatus.includes('Lỗi') ? '#ea4335' : '#34a853',
-                          fontWeight: '600',
-                          marginLeft: '8px'
-                        }}>
-                          {settingsStatus}
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 140px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                        Tốc độ trên Máy tính (Desktop)
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={marqueeSpeedDesktop}
+                          onChange={e => setMarqueeSpeedDesktop(e.target.value)}
+                          placeholder="Máy tính"
+                          min="2"
+                          max="60"
+                          required
+                          style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', width: '90px', textAlign: 'center' }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#64748b' }}>giây</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 140px' }}>
+                      <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                        Tốc độ trên Điện thoại (Mobile)
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={marqueeSpeedMobile}
+                          onChange={e => setMarqueeSpeedMobile(e.target.value)}
+                          placeholder="Điện thoại"
+                          min="2"
+                          max="60"
+                          required
+                          style={{ padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', width: '90px', textAlign: 'center' }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#64748b' }}>giây</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 100%', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                          * Thời gian chạy hết một vòng. Số giây càng nhỏ chữ chạy càng nhanh. Màn hình máy tính rộng hơn nên thường cần thời gian chạy dài hơn điện thoại.
                         </span>
-                      )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button 
+                            type="button" 
+                            onClick={handleQuickUpdateMarqueeSpeed} 
+                            className="btn-primary" 
+                            style={{ 
+                              padding: '8px 16px', 
+                              fontSize: '13px', 
+                              fontWeight: '600',
+                              borderRadius: '6px',
+                              backgroundColor: '#1a73e8',
+                              borderColor: '#1a73e8'
+                            }}
+                          >
+                            Cập nhật tốc độ
+                          </button>
+                          {settingsStatus && (
+                            <span style={{ 
+                              fontSize: '13px', 
+                              color: settingsStatus.includes('Lỗi') ? '#ea4335' : '#34a853',
+                              fontWeight: '600',
+                              marginLeft: '8px'
+                            }}>
+                              {settingsStatus}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 

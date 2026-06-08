@@ -13,7 +13,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [guestMarqueeBonuses, setGuestMarqueeBonuses] = useState([]);
-  const [marqueeSpeed, setMarqueeSpeed] = useState(12);
+  const [marqueeSpeedDesktop, setMarqueeSpeedDesktop] = useState(12);
+  const [marqueeSpeedMobile, setMarqueeSpeedMobile] = useState(8);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,8 +25,15 @@ export default function Home() {
         throw new Error('Not authenticated');
       })
       .then(data => {
-        if (data.marquee_speed) {
-          setMarqueeSpeed(parseInt(data.marquee_speed, 10) || 12);
+        if (data.marquee_speed_desktop) {
+          setMarqueeSpeedDesktop(parseInt(data.marquee_speed_desktop, 10) || 12);
+        }
+        if (data.marquee_speed_mobile) {
+          setMarqueeSpeedMobile(parseInt(data.marquee_speed_mobile, 10) || 8);
+        } else if (data.marquee_speed) {
+          const legacy = parseInt(data.marquee_speed, 10) || 12;
+          setMarqueeSpeedDesktop(legacy);
+          setMarqueeSpeedMobile(Math.round(legacy * 0.7) || 8);
         }
         if (data.user) {
           setUser(data.user);
@@ -230,7 +238,17 @@ export default function Home() {
           overflow: 'hidden',
           boxSizing: 'border-box'
         }}>
-          <div className="marquee-content" style={{ animationDuration: `${marqueeSpeed}s` }}>
+          <style>{`
+            .marquee-content-custom {
+              animation-duration: ${marqueeSpeedDesktop}s !important;
+            }
+            @media (max-width: 768px) {
+              .marquee-content-custom {
+                animation-duration: ${marqueeSpeedMobile}s !important;
+              }
+            }
+          `}</style>
+          <div className="marquee-content marquee-content-custom">
             {marqueeTexts.map((text, idx) => (
               <span key={idx}>
                 🎉 {text} 🎉 {idx < marqueeTexts.length - 1 && <span style={{ margin: '0 24px', opacity: 0.5 }}>•</span>}

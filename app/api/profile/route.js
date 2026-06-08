@@ -23,15 +23,31 @@ async function getUserFromToken(request) {
 }
 
 export async function GET(request) {
-  let marqueeSpeed = 12;
+  let marqueeSpeedDesktop = 12;
+  let marqueeSpeedMobile = 8;
   try {
     const db = await getConnection();
-    const [settingRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'marquee_speed'");
-    if (settingRows.length > 0) {
-      marqueeSpeed = parseInt(settingRows[0].setting_value, 10) || 12;
-    }
+    const [settingRows] = await db.execute(
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('marquee_speed', 'marquee_speed_desktop', 'marquee_speed_mobile')"
+    );
+    let legacyMarqueeSpeed = 12;
+    settingRows.forEach(row => {
+      if (row.setting_key === 'marquee_speed') {
+        legacyMarqueeSpeed = parseInt(row.setting_value, 10) || 12;
+      }
+    });
+    marqueeSpeedDesktop = legacyMarqueeSpeed;
+    marqueeSpeedMobile = Math.round(legacyMarqueeSpeed * 0.7) || 8;
+    settingRows.forEach(row => {
+      if (row.setting_key === 'marquee_speed_desktop') {
+        marqueeSpeedDesktop = parseInt(row.setting_value, 10) || legacyMarqueeSpeed;
+      }
+      if (row.setting_key === 'marquee_speed_mobile') {
+        marqueeSpeedMobile = parseInt(row.setting_value, 10) || Math.round(legacyMarqueeSpeed * 0.7);
+      }
+    });
   } catch (e) {
-    console.error('Error fetching marquee speed setting:', e);
+    console.error('Error fetching marquee speed settings:', e);
   }
 
   const decoded = await getUserFromToken(request);
@@ -49,10 +65,18 @@ export async function GET(request) {
       return NextResponse.json({ 
         user: null, 
         guest_marquee_bonuses: activeGuestBonuses,
-        marquee_speed: marqueeSpeed
+        marquee_speed: marqueeSpeedDesktop,
+        marquee_speed_desktop: marqueeSpeedDesktop,
+        marquee_speed_mobile: marqueeSpeedMobile
       }, { status: 200 });
     } catch (e) {
-      return NextResponse.json({ user: null, guest_marquee_bonuses: [], marquee_speed: marqueeSpeed }, { status: 200 });
+      return NextResponse.json({ 
+        user: null, 
+        guest_marquee_bonuses: [], 
+        marquee_speed: marqueeSpeedDesktop,
+        marquee_speed_desktop: marqueeSpeedDesktop,
+        marquee_speed_mobile: marqueeSpeedMobile
+      }, { status: 200 });
     }
   }
 
@@ -180,7 +204,9 @@ export async function GET(request) {
     return NextResponse.json({ 
       user: userProfile, 
       orders, 
-      marquee_speed: marqueeSpeed,
+      marquee_speed: marqueeSpeedDesktop,
+      marquee_speed_desktop: marqueeSpeedDesktop,
+      marquee_speed_mobile: marqueeSpeedMobile,
       referral: { 
         referredCount, 
         referredUsers, 
