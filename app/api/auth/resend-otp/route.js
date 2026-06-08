@@ -2,6 +2,21 @@ import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 
+function normalizeEmail(email) {
+  if (!email) return '';
+  const lowercase = email.trim().toLowerCase();
+  if (lowercase.endsWith('@gmail.com')) {
+    const parts = lowercase.split('@');
+    let localPart = parts[0];
+    if (localPart.includes('+')) {
+      localPart = localPart.split('+')[0];
+    }
+    localPart = localPart.replace(/\./g, '');
+    return `${localPart}@gmail.com`;
+  }
+  return lowercase;
+}
+
 export async function POST(request) {
   try {
     const { email } = await request.json();
@@ -10,7 +25,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email là bắt buộc' }, { status: 400 });
     }
 
-    const cleanEmail = email.trim();
+    const cleanEmail = normalizeEmail(email);
     const db = await getConnection();
 
     // 1. Tìm user theo email

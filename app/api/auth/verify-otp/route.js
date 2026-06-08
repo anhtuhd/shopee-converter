@@ -4,6 +4,21 @@ import { getConnection } from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_converter_123';
 
+function normalizeEmail(email) {
+  if (!email) return '';
+  const lowercase = email.trim().toLowerCase();
+  if (lowercase.endsWith('@gmail.com')) {
+    const parts = lowercase.split('@');
+    let localPart = parts[0];
+    if (localPart.includes('+')) {
+      localPart = localPart.split('+')[0];
+    }
+    localPart = localPart.replace(/\./g, '');
+    return `${localPart}@gmail.com`;
+  }
+  return lowercase;
+}
+
 export async function POST(request) {
   try {
     const { email, otp } = await request.json();
@@ -12,7 +27,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email và mã OTP là bắt buộc' }, { status: 400 });
     }
 
-    const cleanEmail = email.trim();
+    const cleanEmail = normalizeEmail(email);
     const cleanOtp = otp.trim();
 
     const db = await getConnection();

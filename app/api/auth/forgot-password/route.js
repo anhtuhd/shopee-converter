@@ -3,6 +3,21 @@ import { getConnection } from '@/lib/db';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email';
 
+function normalizeEmail(email) {
+  if (!email) return '';
+  const lowercase = email.trim().toLowerCase();
+  if (lowercase.endsWith('@gmail.com')) {
+    const parts = lowercase.split('@');
+    let localPart = parts[0];
+    if (localPart.includes('+')) {
+      localPart = localPart.split('+')[0];
+    }
+    localPart = localPart.replace(/\./g, '');
+    return `${localPart}@gmail.com`;
+  }
+  return lowercase;
+}
+
 export async function POST(request) {
   try {
     const { email } = await request.json();
@@ -11,8 +26,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email không được để trống' }, { status: 400 });
     }
 
+    const cleanEmail = normalizeEmail(email);
     const db = await getConnection();
-    const [users] = await db.execute('SELECT id, username FROM users WHERE email = ?', [email]);
+    const [users] = await db.execute('SELECT id, username FROM users WHERE email = ?', [cleanEmail]);
 
     if (users.length === 0) {
       return NextResponse.json({ error: 'Email không tồn tại trong hệ thống' }, { status: 404 });
@@ -30,7 +46,7 @@ export async function POST(request) {
 
     await db.execute(
       'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?',
-      [resetToken, mysqlExpiry, email]
+      [resetToken, mysqlExpiry, cleanEmail]
     );
 
     const baseUrl = process.env.BASE_URL || 'https://pishare.site';
