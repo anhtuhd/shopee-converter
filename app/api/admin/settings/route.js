@@ -22,7 +22,7 @@ export async function GET(request) {
   try {
     const db = await getConnection();
     const [rows] = await db.execute(
-      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('global_affiliate_id', 'guest_affiliate_id')"
+      "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('global_affiliate_id', 'guest_affiliate_id', 'marquee_speed')"
     );
 
     const settings = {};
@@ -31,6 +31,7 @@ export async function GET(request) {
     return NextResponse.json({
       global_affiliate_id: settings['global_affiliate_id'] || '17399820370',
       guest_affiliate_id: settings['guest_affiliate_id'] || '17399820370',
+      marquee_speed: settings['marquee_speed'] || '12',
     });
   } catch (error) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
@@ -41,7 +42,7 @@ export async function POST(request) {
   if (!await checkAdmin(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
   try {
-    const { global_affiliate_id, guest_affiliate_id } = await request.json();
+    const { global_affiliate_id, guest_affiliate_id, marquee_speed } = await request.json();
     const db = await getConnection();
 
     await db.execute(
@@ -51,6 +52,10 @@ export async function POST(request) {
     await db.execute(
       "INSERT INTO settings (setting_key, setting_value) VALUES ('guest_affiliate_id', ?) ON DUPLICATE KEY UPDATE setting_value = ?",
       [guest_affiliate_id, guest_affiliate_id]
+    );
+    await db.execute(
+      "INSERT INTO settings (setting_key, setting_value) VALUES ('marquee_speed', ?) ON DUPLICATE KEY UPDATE setting_value = ?",
+      [marquee_speed || '12', marquee_speed || '12']
     );
 
     return NextResponse.json({ message: 'Cập nhật thành công' });

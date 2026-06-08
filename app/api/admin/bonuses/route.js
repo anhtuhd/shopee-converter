@@ -140,13 +140,23 @@ export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const ids = searchParams.get('ids');
 
-    if (!id) {
+    if (!id && !ids) {
       return NextResponse.json({ error: 'Thiếu mã chương trình thưởng' }, { status: 400 });
     }
 
     const db = await getConnection();
-    await db.execute('DELETE FROM special_bonuses WHERE id = ?', [id]);
+    
+    if (ids) {
+      const idList = ids.split(',').map(item => parseInt(item, 10)).filter(item => !isNaN(item));
+      if (idList.length > 0) {
+        const placeholders = idList.map(() => '?').join(',');
+        await db.execute(`DELETE FROM special_bonuses WHERE id IN (${placeholders})`, idList);
+      }
+    } else {
+      await db.execute('DELETE FROM special_bonuses WHERE id = ?', [id]);
+    }
 
     return NextResponse.json({ message: 'Xóa chương trình thưởng thành công' });
   } catch (error) {

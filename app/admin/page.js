@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   // Settings
   const [globalAffiliateId, setGlobalAffiliateId] = useState('');
   const [guestAffiliateId, setGuestAffiliateId] = useState('');
+  const [marqueeSpeed, setMarqueeSpeed] = useState('12');
   const [settingsStatus, setSettingsStatus] = useState('');
 
   // Users
@@ -36,6 +37,11 @@ export default function AdminDashboard() {
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
+  
+  // Bonuses paging and search
+  const [bonusSearchTerm, setBonusSearchTerm] = useState('');
+  const [bonusCurrentPage, setBonusCurrentPage] = useState(1);
+  const [selectedBonusIds, setSelectedBonusIds] = useState([]);
   
   // Orders
   const [orders, setOrders] = useState([]);
@@ -86,6 +92,7 @@ export default function AdminDashboard() {
       const setData = await setRes.json();
       setGlobalAffiliateId(setData.global_affiliate_id || '');
       setGuestAffiliateId(setData.guest_affiliate_id || '');
+      setMarqueeSpeed(setData.marquee_speed || '12');
 
       // Fetch users
       await fetchUsers();
@@ -525,7 +532,11 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ global_affiliate_id: globalAffiliateId, guest_affiliate_id: guestAffiliateId })
+        body: JSON.stringify({ 
+          global_affiliate_id: globalAffiliateId, 
+          guest_affiliate_id: guestAffiliateId,
+          marquee_speed: marqueeSpeed
+        })
       });
       if (res.ok) {
         setSettingsStatus('Lưu thành công!');
@@ -536,6 +547,76 @@ export default function AdminDashboard() {
     } catch (err) {
       setSettingsStatus('Lỗi kết nối.');
     }
+  };
+
+  const getFilteredBonuses = () => {
+    return bonuses.filter(b => 
+      b.username.toLowerCase().includes(bonusSearchTerm.toLowerCase().trim()) ||
+      (b.description && b.description.toLowerCase().includes(bonusSearchTerm.toLowerCase().trim())) ||
+      (b.marquee_text && b.marquee_text.toLowerCase().includes(bonusSearchTerm.toLowerCase().trim()))
+    );
+  };
+
+  const handleSelectBonus = (id, checked) => {
+    if (checked) {
+      setSelectedBonusIds(prev => [...prev, id]);
+    } else {
+      setSelectedBonusIds(prev => prev.filter(item => item !== id));
+    }
+  };
+
+  const getBonusesOnCurrentPage = (filtered) => {
+    const startIndex = (bonusCurrentPage - 1) * 10;
+    return filtered.slice(startIndex, startIndex + 10);
+  };
+
+  const isAllBonusesSelectedOnPage = () => {
+    const filtered = getFilteredBonuses();
+    if (filtered.length === 0) return false;
+    const pageItems = getBonusesOnCurrentPage(filtered);
+    return pageItems.every(item => selectedBonusIds.includes(item.id));
+  };
+
+  const handleSelectAllBonusesOnPage = (e) => {
+    const checked = e.target.checked;
+    const filtered = getFilteredBonuses();
+    const pageItems = getBonusesOnCurrentPage(filtered);
+    const pageIds = pageItems.map(item => item.id);
+    
+    if (checked) {
+      setSelectedBonusIds(prev => Array.from(new Set([...prev, ...pageIds])));
+    } else {
+      setSelectedBonusIds(prev => prev.filter(id => !pageIds.includes(id)));
+    }
+  };
+
+  const handleBulkDeleteBonuses = async () => {
+    if (selectedBonusIds.length === 0) return;
+    if (!confirm(`Xác nhận xóa ${selectedBonusIds.length} chương trình thưởng đặc biệt đã chọn?`)) return;
+    
+    try {
+      const res = await fetch(`/api/admin/bonuses?ids=${selectedBonusIds.join(',')}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        alert('Xóa thành công');
+        setSelectedBonusIds([]);
+        await fetchBonuses();
+      } else {
+        alert('Lỗi khi xóa');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const getBonusStatus = (b) => {
+    const now = new Date();
+    const start = new Date(b.start_date);
+    const end = new Date(b.end_date);
+    if (now < start) return { text: 'Chưa diễn ra', className: 'status-đang-chờ-xử-lý' };
+    if (now > end) return { text: 'Đã hết hạn', className: 'status-đã-hủy' };
+    return { text: 'Đang hoạt động', className: 'status-hoàn-thành' };
   };
 
   const handleUploadCsv = async (e) => {
@@ -1113,6 +1194,23 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
+              <div className="form-group">
+                <label className="form-label">Tốc độ chạy chữ Marquee (giây)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={marqueeSpeed}
+                  onChange={e => setMarqueeSpeed(e.target.value)}
+                  placeholder="Ví dụ: 12"
+                  min="2"
+                  max="60"
+                  required
+                />
+                <span style={{ fontSize: '12px', color: 'var(--secondary-text)', marginTop: '4px', display: 'block' }}>
+                  Thời gian để chữ chạy hết một vòng (giá trị càng nhỏ chữ chạy càng nhanh, mặc định là 12 giây).
+                </span>
+              </div>
+
               <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Lưu cài đặt</button>
               {settingsStatus && (
                 <span style={{ marginLeft: '16px', color: settingsStatus.includes('Lỗi') ? 'red' : 'green', fontWeight: '500' }}>
@@ -1536,76 +1634,159 @@ export default function AdminDashboard() {
             </div>
 
             <div>
-              <h3 style={{ marginBottom: '16px' }}>Danh Sách Đặc Quyền Thưởng Đang Có</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '16px', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0 }}>Danh Sách Đặc Quyền Thưởng Đang Có</h3>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="🔍 Nhập username để lọc/kiểm tra..."
+                    value={bonusSearchTerm}
+                    onChange={(e) => {
+                      setBonusSearchTerm(e.target.value);
+                      setBonusCurrentPage(1);
+                    }}
+                    style={{ padding: '8px 12px', fontSize: '13px', width: '260px' }}
+                  />
+                  {selectedBonusIds.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleBulkDeleteBonuses}
+                      style={{ padding: '8px 16px', fontSize: '13px', backgroundColor: '#ea4335', borderColor: '#ea4335', fontWeight: 'bold' }}
+                    >
+                      🗑️ Xóa {selectedBonusIds.length} mục đã chọn
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="table-container" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid var(--border-color)', background: '#f8f9fa' }}>
+                      <th style={{ padding: '12px 8px', width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isAllBonusesSelectedOnPage()}
+                          onChange={handleSelectAllBonusesOnPage}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </th>
                       <th style={{ padding: '12px 8px' }}>Username</th>
                       <th style={{ padding: '12px 8px' }}>Tỷ lệ hoa hồng thưởng</th>
                       <th style={{ padding: '12px 8px' }}>Thời gian bắt đầu</th>
                       <th style={{ padding: '12px 8px' }}>Thời gian kết thúc</th>
+                      <th style={{ padding: '12px 8px' }}>Trạng thái</th>
                       <th style={{ padding: '12px 8px' }}>Mô tả</th>
                       <th style={{ padding: '12px 8px' }}>Dòng chữ chạy (Marquee)</th>
                       <th style={{ padding: '12px 8px' }}>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bonuses.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
-                          Chưa có chương trình thưởng đặc biệt nào được cấu hình.
-                        </td>
-                      </tr>
-                    ) : (
-                      bonuses.map((b) => (
-                        <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{b.username}</td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <span style={{ fontWeight: 'bold', color: '#34a853' }}>
-                              {(b.bonus_rate * 100).toFixed(0)}%
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>{b.start_date}</td>
-                          <td style={{ padding: '12px 8px' }}>{b.end_date}</td>
-                          <td style={{ padding: '12px 8px' }}>{b.description || '-'}</td>
-                          <td style={{ padding: '12px 8px', fontStyle: b.marquee_text ? 'normal' : 'italic', color: b.marquee_text ? '#202124' : '#999' }}>
-                            {b.marquee_text ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span>{b.marquee_text}</span>
-                                {(b.show_for_guests === 1 || b.show_for_guests === true) && (
-                                  <span style={{ fontSize: '10px', color: '#1a73e8', background: '#e8f0fe', padding: '1px 6px', borderRadius: '4px', alignSelf: 'flex-start', fontWeight: 'bold' }}>
-                                    Hiển thị cho khách
-                                  </span>
-                                )}
-                              </div>
-                            ) : 'Không có'}
-                          </td>
-                          <td style={{ padding: '12px 8px', display: 'flex', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyBonusConfig(b)}
-                              className="btn-primary"
-                              style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#1a73e8', borderColor: '#1a73e8' }}
-                              title="Sao chép cấu hình này lên form để tạo nhanh chương trình mới"
-                            >
-                              Sao chép
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBonus(b.id)}
-                              className="btn-primary"
-                              style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ea4335', borderColor: '#ea4335' }}
-                            >
-                              Xóa
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    {(() => {
+                      const filtered = getFilteredBonuses();
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan="9" style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                              Không tìm thấy chương trình thưởng đặc biệt nào.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      const pageItems = getBonusesOnCurrentPage(filtered);
+                      return pageItems.map((b) => {
+                        const statusObj = getBonusStatus(b);
+                        return (
+                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedBonusIds.includes(b.id)}
+                                onChange={(e) => handleSelectBonus(b.id, e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{b.username}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <span style={{ fontWeight: 'bold', color: '#34a853' }}>
+                                {(b.bonus_rate * 100).toFixed(0)}%
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 8px', fontSize: '13px' }}>{b.start_date}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '13px' }}>{b.end_date}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <span className={`status-badge ${statusObj.className}`}>
+                                {statusObj.text}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 8px', fontSize: '13px' }}>{b.description || '-'}</td>
+                            <td style={{ padding: '12px 8px', fontStyle: b.marquee_text ? 'normal' : 'italic', color: b.marquee_text ? '#202124' : '#999', fontSize: '13px' }}>
+                              {b.marquee_text ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <span>{b.marquee_text}</span>
+                                  {(b.show_for_guests === 1 || b.show_for_guests === true) && (
+                                    <span style={{ fontSize: '10px', color: '#1a73e8', background: '#e8f0fe', padding: '1px 6px', borderRadius: '4px', alignSelf: 'flex-start', fontWeight: 'bold' }}>
+                                      Hiển thị cho khách
+                                    </span>
+                                  )}
+                                </div>
+                              ) : 'Không có'}
+                            </td>
+                            <td style={{ padding: '12px 8px', display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyBonusConfig(b)}
+                                className="btn-primary"
+                                style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#1a73e8', borderColor: '#1a73e8' }}
+                                title="Sao chép cấu hình này lên form để tạo nhanh chương trình mới"
+                              >
+                                Sao chép
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBonus(b.id)}
+                                className="btn-primary"
+                                style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#ea4335', borderColor: '#ea4335' }}
+                              >
+                                Xóa
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>
+              {(() => {
+                const filtered = getFilteredBonuses();
+                const totalBPages = Math.ceil(filtered.length / 10);
+                if (totalBPages <= 1) return null;
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '16px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setBonusCurrentPage(p => Math.max(p - 1, 1))}
+                      disabled={bonusCurrentPage === 1}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '13px' }}
+                    >
+                      Trang trước
+                    </button>
+                    <span style={{ fontSize: '14px' }}>Trang {bonusCurrentPage} / {totalBPages}</span>
+                    <button
+                      type="button"
+                      onClick={() => setBonusCurrentPage(p => Math.min(p + 1, totalBPages))}
+                      disabled={bonusCurrentPage === totalBPages}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '13px' }}
+                    >
+                      Trang sau
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

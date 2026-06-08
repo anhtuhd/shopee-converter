@@ -23,6 +23,17 @@ async function getUserFromToken(request) {
 }
 
 export async function GET(request) {
+  let marqueeSpeed = 12;
+  try {
+    const db = await getConnection();
+    const [settingRows] = await db.execute("SELECT setting_value FROM settings WHERE setting_key = 'marquee_speed'");
+    if (settingRows.length > 0) {
+      marqueeSpeed = parseInt(settingRows[0].setting_value, 10) || 12;
+    }
+  } catch (e) {
+    console.error('Error fetching marquee speed setting:', e);
+  }
+
   const decoded = await getUserFromToken(request);
   if (!decoded) {
     try {
@@ -37,10 +48,11 @@ export async function GET(request) {
       
       return NextResponse.json({ 
         user: null, 
-        guest_marquee_bonuses: activeGuestBonuses 
+        guest_marquee_bonuses: activeGuestBonuses,
+        marquee_speed: marqueeSpeed
       }, { status: 200 });
     } catch (e) {
-      return NextResponse.json({ user: null, guest_marquee_bonuses: [] }, { status: 200 });
+      return NextResponse.json({ user: null, guest_marquee_bonuses: [], marquee_speed: marqueeSpeed }, { status: 200 });
     }
   }
 
@@ -168,6 +180,7 @@ export async function GET(request) {
     return NextResponse.json({ 
       user: userProfile, 
       orders, 
+      marquee_speed: marqueeSpeed,
       referral: { 
         referredCount, 
         referredUsers, 

@@ -13,6 +13,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [guestMarqueeBonuses, setGuestMarqueeBonuses] = useState([]);
+  const [marqueeSpeed, setMarqueeSpeed] = useState(12);
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +24,9 @@ export default function Home() {
         throw new Error('Not authenticated');
       })
       .then(data => {
+        if (data.marquee_speed) {
+          setMarqueeSpeed(parseInt(data.marquee_speed, 10) || 12);
+        }
         if (data.user) {
           setUser(data.user);
           setOrders(data.orders || []);
@@ -226,7 +230,7 @@ export default function Home() {
           overflow: 'hidden',
           boxSizing: 'border-box'
         }}>
-          <div className="marquee-content">
+          <div className="marquee-content" style={{ animationDuration: `${marqueeSpeed}s` }}>
             {marqueeTexts.map((text, idx) => (
               <span key={idx}>
                 🎉 {text} 🎉 {idx < marqueeTexts.length - 1 && <span style={{ margin: '0 24px', opacity: 0.5 }}>•</span>}
