@@ -6,17 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_for_shopee_conver
 
 function normalizeEmail(email) {
   if (!email) return '';
-  const lowercase = email.trim().toLowerCase();
-  if (lowercase.endsWith('@gmail.com')) {
-    const parts = lowercase.split('@');
-    let localPart = parts[0];
-    if (localPart.includes('+')) {
-      localPart = localPart.split('+')[0];
-    }
-    localPart = localPart.replace(/\./g, '');
-    return `${localPart}@gmail.com`;
-  }
-  return lowercase;
+  return email.trim().toLowerCase();
 }
 
 export async function POST(request) {

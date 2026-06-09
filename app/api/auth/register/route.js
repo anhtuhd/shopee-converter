@@ -5,25 +5,13 @@ import { getConnection } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 
 function validateEmail(email) {
-  // Chỉ chấp nhận định dạng Gmail cá nhân kết thúc bằng @gmail.com
-  const re = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-  return re.test(email);
+  // Tạm thời bỏ qua validate email để cho phép ký tự đặc biệt
+  return true;
 }
 
 function normalizeGmail(email) {
-  const lowercase = email.trim().toLowerCase();
-  const parts = lowercase.split('@');
-  let localPart = parts[0];
-  
-  // Loại bỏ tất cả phần mở rộng sau dấu cộng '+'
-  if (localPart.includes('+')) {
-    localPart = localPart.split('+')[0];
-  }
-  
-  // Loại bỏ toàn bộ dấu chấm '.'
-  localPart = localPart.replace(/\./g, '');
-  
-  return `${localPart}@gmail.com`;
+  // Tạm thời bỏ qua chuẩn hóa Gmail để giữ nguyên các ký tự đặc biệt
+  return email.trim().toLowerCase();
 }
 
 function validateUsername(username) {
@@ -91,14 +79,13 @@ export async function POST(request) {
       referrerId = referrerRows[0].id;
     }
 
-    // Check if email exists (using REPLACE to cover both normalized format and legacy dot format)
-    const normalizedGmailNoDots = normalizedEmail.replace(/\./g, '');
+    // Check if email exists
     const [emailRows] = await db.execute(
-      "SELECT id FROM users WHERE REPLACE(email, '.', '') = ?", 
-      [normalizedGmailNoDots]
+      "SELECT id FROM users WHERE email = ?", 
+      [normalizedEmail]
     );
     if (emailRows.length > 0) {
-      return NextResponse.json({ error: 'Địa chỉ Gmail này (hoặc bí danh tương tự) đã được đăng ký trên hệ thống.' }, { status: 400 });
+      return NextResponse.json({ error: 'Địa chỉ Email này đã được đăng ký trên hệ thống.' }, { status: 400 });
     }
 
     // Check if username exists
