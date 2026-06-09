@@ -32,10 +32,11 @@ export async function POST(request) {
 
     const db = await getConnection();
 
-    // 1. Tìm user theo email
+    // 1. Tìm user theo email (cả dạng chuẩn hóa và dạng gốc)
+    const rawEmail = email.trim().toLowerCase();
     const [users] = await db.execute(
-      'SELECT id, username, role, is_verified, verification_token, verification_token_expiry FROM users WHERE email = ?',
-      [cleanEmail]
+      'SELECT id, username, role, is_verified, verification_token, verification_token_expiry FROM users WHERE email = ? OR email = ?',
+      [cleanEmail, rawEmail]
     );
 
     if (users.length === 0) {

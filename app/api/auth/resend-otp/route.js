@@ -28,10 +28,11 @@ export async function POST(request) {
     const cleanEmail = normalizeEmail(email);
     const db = await getConnection();
 
-    // 1. Tìm user theo email
+    // 1. Tìm user theo email (cả dạng chuẩn hóa và dạng gốc)
+    const rawEmail = email.trim().toLowerCase();
     const [users] = await db.execute(
-      'SELECT id, username, is_verified FROM users WHERE email = ?',
-      [cleanEmail]
+      'SELECT id, username, email, is_verified FROM users WHERE email = ? OR email = ?',
+      [cleanEmail, rawEmail]
     );
 
     if (users.length === 0) {
@@ -64,7 +65,7 @@ export async function POST(request) {
     // 4. Gửi email chứa OTP mới (SMTP ưu tiên, Resend dự phòng)
     await sendEmail({
       from: 'Shopee Affiliate <noreply@pishare.site>',
-      to: cleanEmail,
+      to: user.email,
       subject: 'Mã xác thực OTP mới kích hoạt tài khoản - Shopee Affiliate',
       html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">

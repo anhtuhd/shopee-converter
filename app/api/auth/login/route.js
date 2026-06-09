@@ -34,10 +34,10 @@ export async function POST(request) {
     const searchUsername = username.toLowerCase().trim();
     const searchEmail = normalizeEmail(username);
 
-    // Find user by username OR email
+    // Find user by username OR email (both clean/normalized and raw username/email)
     const [rows] = await db.execute(
-      'SELECT id, username, password_hash, role, is_verified FROM users WHERE username = ? OR email = ?', 
-      [searchUsername, searchEmail]
+      'SELECT id, username, password_hash, role, is_verified FROM users WHERE username = ? OR email = ? OR email = ?', 
+      [searchUsername, searchEmail, searchUsername]
     );
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Sai tên đăng nhập/email hoặc mật khẩu' }, { status: 401 });

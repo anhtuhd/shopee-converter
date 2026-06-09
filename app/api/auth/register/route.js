@@ -91,8 +91,12 @@ export async function POST(request) {
       referrerId = referrerRows[0].id;
     }
 
-    // Check if email exists
-    const [emailRows] = await db.execute('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
+    // Check if email exists (using REPLACE to cover both normalized format and legacy dot format)
+    const normalizedGmailNoDots = normalizedEmail.replace(/\./g, '');
+    const [emailRows] = await db.execute(
+      "SELECT id FROM users WHERE REPLACE(email, '.', '') = ?", 
+      [normalizedGmailNoDots]
+    );
     if (emailRows.length > 0) {
       return NextResponse.json({ error: 'Địa chỉ Gmail này (hoặc bí danh tương tự) đã được đăng ký trên hệ thống.' }, { status: 400 });
     }

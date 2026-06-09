@@ -27,8 +27,12 @@ export async function POST(request) {
     }
 
     const cleanEmail = normalizeEmail(email);
+    const rawEmail = email.trim().toLowerCase();
     const db = await getConnection();
-    const [users] = await db.execute('SELECT id, username FROM users WHERE email = ?', [cleanEmail]);
+    const [users] = await db.execute(
+      'SELECT id, username, email FROM users WHERE email = ? OR email = ?',
+      [cleanEmail, rawEmail]
+    );
 
     if (users.length === 0) {
       return NextResponse.json({ error: 'Email không tồn tại trong hệ thống' }, { status: 404 });
@@ -45,8 +49,8 @@ export async function POST(request) {
     const mysqlExpiry = expiryDate.toISOString().slice(0, 19).replace('T', ' ');
 
     await db.execute(
-      'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?',
-      [resetToken, mysqlExpiry, cleanEmail]
+      'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
+      [resetToken, mysqlExpiry, user.id]
     );
 
     const baseUrl = process.env.BASE_URL || 'https://pishare.site';
