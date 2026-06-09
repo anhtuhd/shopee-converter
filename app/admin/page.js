@@ -477,28 +477,26 @@ export default function AdminDashboard() {
   };
 
   const handleResetPassword = async (userObj) => {
-    const newPassword = prompt(`Nhập mật khẩu mới cho thành viên ${userObj.username}:`, "123456");
-    if (newPassword === null) return;
-    const passwordTrimmed = newPassword.trim();
-    if (passwordTrimmed.length < 6) {
-      alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+    if (!userObj.email) {
+      alert("Thành viên này không có địa chỉ email trên hệ thống!");
       return;
     }
+    const confirmReset = confirm(`Bạn có chắc chắn muốn gửi email khôi phục mật khẩu tới thành viên ${userObj.username} (${userObj.email}) không?`);
+    if (!confirmReset) return;
+    
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PUT',
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...userObj,
-          password: passwordTrimmed
+          email: userObj.email
         })
       });
       if (res.ok) {
-        alert(`Đã đặt lại mật khẩu mới cho ${userObj.username} thành công!`);
-        await fetchUsers(usersCurrentPage);
+        alert(`Đã gửi email khôi phục mật khẩu tới hộp thư ${userObj.email} thành công!`);
       } else {
         const errData = await res.json();
-        alert(errData.error || 'Lỗi khi đặt lại mật khẩu.');
+        alert(errData.error || 'Lỗi khi gửi email khôi phục mật khẩu.');
       }
     } catch (err) {
       console.error(err);
