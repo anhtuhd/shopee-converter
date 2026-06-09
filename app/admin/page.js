@@ -74,6 +74,8 @@ export default function AdminDashboard() {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [usersCurrentPage, setUsersCurrentPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
 
   const router = useRouter();
 
@@ -109,10 +111,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchUsers = async () => {
-    const usrRes = await fetch('/api/admin/users');
-    const usrData = await usrRes.json();
-    setUsers(usrData.users || []);
+  const fetchUsers = async (page = usersCurrentPage) => {
+    try {
+      const usrRes = await fetch(`/api/admin/users?page=${page}`);
+      const usrData = await usrRes.json();
+      setUsers(usrData.users || []);
+      setUsersTotalPages(usrData.totalPages || 1);
+      setUsersCurrentPage(usrData.page || page);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchOrders = async () => {
@@ -468,6 +476,36 @@ export default function AdminDashboard() {
     setEditEmail(user.email || '');
   };
 
+  const handleResetPassword = async (userObj) => {
+    const newPassword = prompt(`Nhập mật khẩu mới cho thành viên ${userObj.username}:`, "123456");
+    if (newPassword === null) return;
+    const passwordTrimmed = newPassword.trim();
+    if (passwordTrimmed.length < 6) {
+      alert("Mật khẩu mới phải có ít nhất 6 ký tự!");
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...userObj,
+          password: passwordTrimmed
+        })
+      });
+      if (res.ok) {
+        alert(`Đã đặt lại mật khẩu mới cho ${userObj.username} thành công!`);
+        await fetchUsers(usersCurrentPage);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Lỗi khi đặt lại mật khẩu.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi kết nối.');
+    }
+  };
+
   const handleSaveUser = async (e) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -526,6 +564,12 @@ export default function AdminDashboard() {
       fetchOrders();
     }
   }, [currentPage, activeTab, filterStatus, filterOrderId, filterSubId, filterStartOrder, filterEndOrder, filterStartCompleted, filterEndCompleted]);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers(usersCurrentPage);
+    }
+  }, [usersCurrentPage, activeTab]);
 
   const handleUpdateSettings = async (e) => {
     e.preventDefault();
@@ -843,11 +887,11 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>
                           {u.bank_qr ? (
                             <a href={u.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
-                              Xem mã QR
+                               Xem mã QR
                             </a>
                           ) : (
                             <span style={{ color: '#ea4335', fontSize: '12px', background: '#fce8e6', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                              Chưa cập nhật
+                               Chưa cập nhật
                             </span>
                           )}
                         </td>
@@ -864,6 +908,18 @@ export default function AdminDashboard() {
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button onClick={() => handleStartEditUser(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
                               Sửa
+                            </button>
+                            <button 
+                              onClick={() => handleResetPassword(u)} 
+                              className="btn-secondary" 
+                              style={{ 
+                                padding: '4px 8px', 
+                                fontSize: '12px',
+                                color: '#ea4335',
+                                borderColor: '#ea4335'
+                              }}
+                            >
+                              Reset Pass
                             </button>
                             {(!u.bank_qr || !u.full_name || !u.phone) && (
                               <button 
@@ -889,6 +945,29 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            {usersTotalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', gap: '16px' }}>
+                <button
+                  type="button"
+                  onClick={() => setUsersCurrentPage(p => Math.max(p - 1, 1))}
+                  disabled={usersCurrentPage === 1}
+                  className="btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                >
+                  Trang trước
+                </button>
+                <span style={{ fontSize: '14px' }}>Trang {usersCurrentPage} / {usersTotalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setUsersCurrentPage(p => Math.min(p + 1, usersTotalPages))}
+                  disabled={usersCurrentPage === usersTotalPages}
+                  className="btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                >
+                  Trang sau
+                </button>
+              </div>
+            )}
           </div>
         )}
 
