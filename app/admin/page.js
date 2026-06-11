@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
+  const [activeQrModalUrl, setActiveQrModalUrl] = useState(null);
   
   // Settings
   const [globalAffiliateId, setGlobalAffiliateId] = useState('');
@@ -1123,7 +1124,11 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>{u.phone || '-'}</td>
                         <td style={{ padding: '12px 8px' }}>
                           {u.bank_qr ? (
-                            <a href={u.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline' }}>
+                            <a 
+                              href="#" 
+                              onClick={(e) => { e.preventDefault(); setActiveQrModalUrl(u.bank_qr); }} 
+                              style={{ color: 'var(--primary-color)', fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline', cursor: 'pointer' }}
+                            >
                                Xem mã QR
                             </a>
                           ) : (
@@ -1429,7 +1434,13 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>{p.full_name || '-'}</td>
                         <td style={{ padding: '12px 8px' }}>
                           {p.bank_qr ? (
-                            <a href={p.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px' }}>Xem mã QR</a>
+                            <a 
+                              href="#" 
+                              onClick={(e) => { e.preventDefault(); setActiveQrModalUrl(p.bank_qr); }} 
+                              style={{ color: 'var(--primary-color)', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                            >
+                              Xem mã QR
+                            </a>
                           ) : (
                             <span style={{ color: '#ccc', fontSize: '12px' }}>Chưa có QR</span>
                           )}
@@ -1504,7 +1515,13 @@ export default function AdminDashboard() {
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {b.bank_qr ? (
-                            <a href={b.bank_qr} target="_blank" rel="noreferrer" style={{ color: 'var(--primary-color)', fontSize: '12px', textDecoration: 'underline' }}>Xem mã QR</a>
+                            <a 
+                              href="#" 
+                              onClick={(e) => { e.preventDefault(); setActiveQrModalUrl(b.bank_qr); }} 
+                              style={{ color: 'var(--primary-color)', fontSize: '12px', textDecoration: 'underline', cursor: 'pointer' }}
+                            >
+                              Xem mã QR
+                            </a>
                           ) : (
                             <span style={{ color: '#ccc', fontSize: '12px' }}>Không có QR</span>
                           )}
@@ -3059,6 +3076,79 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Popup Modal */}
+      {activeQrModalUrl && (
+        <div 
+          onClick={() => setActiveQrModalUrl(null)} 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            style={{
+              backgroundColor: '#fff',
+              padding: '24px',
+              borderRadius: '16px',
+              maxWidth: '90%',
+              maxHeight: '90%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
+              position: 'relative'
+            }}
+          >
+            <button 
+              onClick={() => setActiveQrModalUrl(null)} 
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                border: 'none',
+                background: '#f1f3f4',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                fontSize: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#5f6368',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e8eaed'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f3f4'}
+            >
+              ×
+            </button>
+            <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: '700', color: '#202124' }}>Mã QR tài khoản ngân hàng</h3>
+            <img 
+              src={activeQrModalUrl} 
+              alt="Bank QR" 
+              style={{
+                maxWidth: '300px',
+                maxHeight: '400px',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                border: '1px solid #dfe1e5'
+              }}
+            />
           </div>
         </div>
       )}
