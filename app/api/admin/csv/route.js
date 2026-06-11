@@ -182,7 +182,7 @@ export async function POST(request) {
         const batch = orderIds.slice(i, i + batchSize);
         const placeholders = batch.map(() => '?').join(',');
         const [rows] = await db.execute(
-          `SELECT id, order_id, item_id, model_id, status, referrer_id, referrer_payout_status FROM orders WHERE order_id IN (${placeholders})`,
+          `SELECT id, order_id, item_id, model_id, status, referrer_id, referrer_payout_status, sub_id1 FROM orders WHERE order_id IN (${placeholders})`,
           batch
         );
         existingRows = existingRows.concat(rows);
@@ -194,7 +194,8 @@ export async function POST(request) {
       id: r.id, 
       status: r.status,
       referrer_id: r.referrer_id,
-      referrer_payout_status: r.referrer_payout_status
+      referrer_payout_status: r.referrer_payout_status,
+      sub_id1: r.sub_id1
     }));
 
     const toInsertMap = new Map();
@@ -227,7 +228,13 @@ export async function POST(request) {
       const sub_id5 = record['Sub_id5'] || null;
       const channel = record['Kênh'] || null;
 
-      const lowerSub1 = sub_id1 ? sub_id1.toLowerCase() : '';
+      const key = `${order_id}__${item_id}__${model_id}`;
+      const existing = existingMap.get(key);
+
+      const existingSub1 = existing ? existing.sub_id1 : null;
+      const finalSub1 = (existingSub1 !== null && existingSub1 !== '') ? existingSub1 : sub_id1;
+
+      const lowerSub1 = finalSub1 ? finalSub1.toLowerCase() : '';
       let rate = userRates[lowerSub1] || 0.50;
 
       // 1. Áp dụng thưởng đặc biệt Admin set nếu khớp khoảng thời gian order_time
@@ -273,9 +280,6 @@ export async function POST(request) {
         }
       }
 
-      const key = `${order_id}__${item_id}__${model_id}`;
-      const existing = existingMap.get(key);
-
       if (existing) {
         // Nếu trạng thái trong DB đã là 'Đã thanh toán', ta kiểm tra xem trạng thái mới từ Shopee có phải là Đã hủy/Trả hàng/Hoàn tiền không
         if (existing.status === 'Đã thanh toán') {
@@ -312,7 +316,8 @@ export async function POST(request) {
           user_commission,
           referrer_id,
           referrer_commission,
-          referrer_payout_status
+          referrer_payout_status,
+          sub_id1: finalSub1 || null
         });
       } else {
         // Nếu trùng key ngay trong cùng một file upload, chỉ cập nhật trạng thái
@@ -325,7 +330,7 @@ export async function POST(request) {
             shop_name, shop_id, item_id, model_id, item_name, product_type, price, quantity,
             order_value, total_commission, user_commission,
             referrer_id, referrer_commission, referrer_payout_status,
-            sub_id1, sub_id2, sub_id3, sub_id4, sub_id5, channel
+            finalSub1 || null, sub_id2, sub_id3, sub_id4, sub_id5, channel
           ]);
         }
       }
@@ -376,7 +381,8 @@ export async function POST(request) {
               user_commission = ?, 
               referrer_id = ?, 
               referrer_commission = ?, 
-              referrer_payout_status = ?
+              referrer_payout_status = ?,
+              sub_id1 = ?
             WHERE id = ?
           `, [
             data.status,
@@ -389,6 +395,7 @@ export async function POST(request) {
             data.referrer_id,
             data.referrer_commission,
             data.referrer_payout_status,
+            data.sub_id1,
             id
           ]);
         }

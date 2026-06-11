@@ -100,6 +100,12 @@ export default function AdminDashboard() {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
+  // Assign User to Order states
+  const [showAssignUserModal, setShowAssignUserModal] = useState(false);
+  const [assigningOrder, setAssigningOrder] = useState(null);
+  const [assignUsername, setAssignUsername] = useState('');
+  const [userSuggestions, setUserSuggestions] = useState([]);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -126,6 +132,9 @@ export default function AdminDashboard() {
 
       // Fetch orders
       await fetchOrders();
+
+      // Fetch all users for autocomplete/search
+      await fetchAllUsersForBonus();
       
     } catch (err) {
       console.error(err);
@@ -959,6 +968,60 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleStartAssignUser = (order) => {
+    setAssigningOrder(order);
+    setAssignUsername(order.sub_id1 || '');
+    setUserSuggestions([]);
+    setShowAssignUserModal(true);
+  };
+
+  const handleAssignUsernameChange = (val) => {
+    setAssignUsername(val);
+    if (!val.trim()) {
+      setUserSuggestions([]);
+      return;
+    }
+    const filtered = allUsersForBonus.filter(u => 
+      u.username.toLowerCase().includes(val.toLowerCase()) || 
+      (u.full_name && u.full_name.toLowerCase().includes(val.toLowerCase()))
+    );
+    setUserSuggestions(filtered.slice(0, 5));
+  };
+
+  const handleSelectAssignSuggestion = (username) => {
+    setAssignUsername(username);
+    setUserSuggestions([]);
+  };
+
+  const handleSaveAssignUser = async (e) => {
+    e.preventDefault();
+    if (!assigningOrder) return;
+    
+    try {
+      const res = await fetch('/api/admin/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: assigningOrder.order_id,
+          username: assignUsername
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Gán user thành công');
+        setShowAssignUserModal(false);
+        setAssigningOrder(null);
+        setAssignUsername('');
+        await fetchOrders();
+      } else {
+        alert(data.error || 'Lỗi khi gán user');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi kết nối');
+    }
+  };
+
   if (loading) return <div className="main-container">Đang tải...</div>;
 
   return (
@@ -1236,7 +1299,22 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge status-${(o.status || '').toLowerCase().replace(/ /g, '-')}`}>{o.status}</span>
                         </td>
-                        <td style={{ padding: '12px 8px' }}>
+                        <td style={{ padding: '12px 8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          <button 
+                            onClick={() => handleStartAssignUser(o)} 
+                            className="btn-primary" 
+                            style={{ 
+                              padding: '4px 8px', 
+                              fontSize: '12px', 
+                              background: o.sub_id1 ? '#64748b' : '#3b82f6',
+                              border: 'none',
+                              borderRadius: '4px',
+                              color: 'white',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {o.sub_id1 ? 'Đổi User' : 'Gán User'}
+                          </button>
                           {o.status === 'Hoàn thành' && (
                             <button onClick={() => handlePayOrder(o.id)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
                               Thanh toán lẻ
@@ -2826,6 +2904,122 @@ export default function AdminDashboard() {
                   style={{ padding: '8px 16px', fontSize: '14px' }}
                 >
                   {updatingUser ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Assign User Modal */}
+      {showAssignUserModal && assigningOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '30px',
+            width: '100%',
+            maxWidth: '480px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#111827', margin: 0 }}>
+              Gán đơn hàng cho User
+            </h3>
+            
+            <div style={{ background: '#f3f4f6', padding: '14px', borderRadius: '10px', marginTop: '16px', marginBottom: '16px', fontSize: '13px', border: '1px solid #e5e7eb' }}>
+              <div style={{ marginBottom: '6px' }}><strong>Mã đơn hàng:</strong> <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{assigningOrder.order_id}</span></div>
+              <div style={{ marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><strong>Sản phẩm:</strong> {assigningOrder.item_name || '-'}</div>
+              <div style={{ marginBottom: '6px' }}><strong>Giá trị đơn:</strong> {Number(assigningOrder.order_value).toLocaleString('vi-VN')} đ</div>
+              <div><strong>User hiện tại:</strong> {assigningOrder.sub_id1 ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>{assigningOrder.sub_id1}</span> : <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Chưa gán</span>}</div>
+            </div>
+
+            <form onSubmit={handleSaveAssignUser}>
+              <div className="form-group" style={{ marginBottom: '20px', position: 'relative' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                  Nhập Username thành viên chỉ định
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={assignUsername}
+                  onChange={(e) => handleAssignUsernameChange(e.target.value)}
+                  placeholder="Gõ để tìm kiếm username..."
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                />
+                
+                {/* Autocomplete suggestions dropdown */}
+                {userSuggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    border: '1px solid #dadce0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    zIndex: 1010,
+                    marginTop: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    {userSuggestions.map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => handleSelectAssignSuggestion(user.username)}
+                        style={{
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #f3f4f6',
+                          fontSize: '13px',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      >
+                        <strong style={{ color: '#111827' }}>{user.username}</strong>
+                        {user.full_name && <span style={{ marginLeft: '8px', color: '#6b7280' }}>({user.full_name})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <span style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px', display: 'block' }}>
+                  Nhập chính xác username của user hoặc chọn từ gợi ý. Để trống và lưu để hủy gán.
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'end' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowAssignUserModal(false);
+                    setAssigningOrder(null);
+                    setAssignUsername('');
+                  }}
+                  style={{ padding: '8px 16px', fontSize: '14px' }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '14px', background: '#3b82f6', border: 'none' }}
+                >
+                  Lưu thay đổi
                 </button>
               </div>
             </form>
