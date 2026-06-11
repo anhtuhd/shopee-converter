@@ -2248,10 +2248,9 @@ export default function AdminDashboard() {
                       fontSize: '13px',
                       background: financialFilterRange === key ? '#1e293b' : 'white',
                       color: financialFilterRange === key ? 'white' : '#475569',
-                      borderColor: financialFilterRange === key ? '#1e293b' : '#cbd5e1',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      border: '1px solid #cbd5e1',
+                      border: `1px solid ${financialFilterRange === key ? '#1e293b' : '#cbd5e1'}`,
                       transition: 'all 0.2s'
                     }}
                   >
