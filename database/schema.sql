@@ -112,4 +112,18 @@ CREATE TABLE IF NOT EXISTS payout_bills (
 CREATE INDEX IF NOT EXISTS idx_payout_bills_username ON payout_bills(username);
 CREATE INDEX IF NOT EXISTS idx_payout_bills_user_id ON payout_bills(user_id);
 
+CREATE TABLE IF NOT EXISTS app_financials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type ENUM('revenue', 'expense') NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT,
+    transaction_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX IF NOT EXISTS idx_financials_date ON app_financials(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_financials_type ON app_financials(type);
+
+
 

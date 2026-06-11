@@ -77,6 +77,29 @@ export default function AdminDashboard() {
   const [usersCurrentPage, setUsersCurrentPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
 
+  // Financials states
+  const [financialsData, setFinancialsData] = useState(null);
+  const [financialsLoading, setFinancialsLoading] = useState(false);
+  const [financialFilterRange, setFinancialFilterRange] = useState('30days');
+  const [financialStartDate, setFinancialStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [financialEndDate, setFinancialEndDate] = useState(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+  const [showAddTransactionModal, setShowAddTransactionModal] = useState(false);
+  const [transactionType, setTransactionType] = useState('expense');
+  const [transactionAmount, setTransactionAmount] = useState('');
+  const [transactionCategory, setTransactionCategory] = useState('Server');
+  const [transactionDescription, setTransactionDescription] = useState('');
+  const [transactionDate, setTransactionDate] = useState(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -121,6 +144,94 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const fetchFinancials = async () => {
+    setFinancialsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/financials?startDate=${financialStartDate}&endDate=${financialEndDate}`);
+      if (res.status === 403) {
+        router.push('/');
+        return;
+      }
+      if (res.ok) {
+        const data = await res.json();
+        setFinancialsData(data);
+      } else {
+        alert('Lỗi tải báo cáo tài chính');
+      }
+    } catch (err) {
+      console.error('Lỗi tải báo cáo tài chính:', err);
+    } finally {
+      setFinancialsLoading(false);
+    }
+  };
+
+  const handleAddTransaction = async (e) => {
+    e.preventDefault();
+    try {
+      const body = {
+        type: transactionType,
+        amount: parseFloat(transactionAmount),
+        category: transactionCategory,
+        description: transactionDescription,
+        transaction_date: transactionDate
+      };
+      
+      let url = '/api/admin/financials';
+      let method = 'POST';
+      
+      if (editingTransaction) {
+        body.id = editingTransaction.id;
+        method = 'PUT';
+      }
+      
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      
+      if (res.ok) {
+        setShowAddTransactionModal(false);
+        setEditingTransaction(null);
+        setTransactionAmount('');
+        setTransactionDescription('');
+        fetchFinancials();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Lỗi ghi nhận giao dịch');
+      }
+    } catch (err) {
+      console.error('Lỗi khi lưu giao dịch:', err);
+      alert('Lỗi kết nối');
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) return;
+    try {
+      const res = await fetch(`/api/admin/financials?id=${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchFinancials();
+      } else {
+        alert('Lỗi khi xóa giao dịch');
+      }
+    } catch (err) {
+      console.error('Lỗi khi xóa giao dịch:', err);
+    }
+  };
+
+  const handleStartEditTransaction = (tx) => {
+    setEditingTransaction(tx);
+    setTransactionType(tx.type);
+    setTransactionAmount(tx.amount.toString());
+    setTransactionCategory(tx.category);
+    setTransactionDescription(tx.description);
+    setTransactionDate(tx.transaction_date);
+    setShowAddTransactionModal(true);
   };
 
   const fetchOrders = async () => {
@@ -569,6 +680,46 @@ export default function AdminDashboard() {
     }
   }, [usersCurrentPage, activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'financials') {
+      fetchFinancials();
+    }
+  }, [activeTab, financialStartDate, financialEndDate]);
+
+  useEffect(() => {
+    if (financialFilterRange === 'custom') return;
+    
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+    
+    if (financialFilterRange === 'today') {
+      // already set to today
+    } else if (financialFilterRange === 'yesterday') {
+      start.setDate(today.getDate() - 1);
+      end.setDate(today.getDate() - 1);
+    } else if (financialFilterRange === '7days') {
+      start.setDate(today.getDate() - 7);
+    } else if (financialFilterRange === '30days') {
+      start.setDate(today.getDate() - 30);
+    } else if (financialFilterRange === 'thismonth') {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+    } else if (financialFilterRange === 'lastmonth') {
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+    }
+    
+    const toDateString = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const date = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${date}`;
+    };
+    
+    setFinancialStartDate(toDateString(start));
+    setFinancialEndDate(toDateString(end));
+  }, [financialFilterRange]);
+
   const handleUpdateSettings = async (e) => {
     e.preventDefault();
     setSettingsStatus('Đang lưu...');
@@ -844,6 +995,12 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab('bonuses')}
         >
           Thưởng Đặc Biệt
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'financials' ? 'active' : ''}`}
+          onClick={() => setActiveTab('financials')}
+        >
+          Doanh thu & Lợi nhuận
         </button>
         <button 
           className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
@@ -1990,6 +2147,587 @@ export default function AdminDashboard() {
                 );
               })()}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'financials' && (
+          <div>
+            <h3 style={{ marginBottom: '16px', color: '#1e293b', fontWeight: '700' }}>Báo cáo Doanh thu & Lợi nhuận</h3>
+            
+            {/* Time Filters */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[['today', 'Hôm nay'], ['yesterday', 'Hôm qua'], ['7days', '7 ngày qua'], ['30days', '30 ngày qua'], ['thismonth', 'Tháng này'], ['lastmonth', 'Tháng trước'], ['custom', 'Tùy chọn']].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFinancialFilterRange(key)}
+                    className={`btn-secondary ${financialFilterRange === key ? 'active' : ''}`}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '13px',
+                      background: financialFilterRange === key ? '#1e293b' : 'white',
+                      color: financialFilterRange === key ? 'white' : '#475569',
+                      borderColor: financialFilterRange === key ? '#1e293b' : '#cbd5e1',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      border: '1px solid #cbd5e1',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              
+              {financialFilterRange === 'custom' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={financialStartDate}
+                    onChange={(e) => setFinancialStartDate(e.target.value)}
+                    style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                  <span>đến</span>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={financialEndDate}
+                    onChange={(e) => setFinancialEndDate(e.target.value)}
+                    style={{ padding: '6px 12px', fontSize: '13px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Summary Cards */}
+            {financialsData && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', marginBottom: '8px' }}>Tổng Doanh Số Đơn</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
+                    {new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_order_value)}đ
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Từ {financialsData.summary.total_orders} đơn hàng Shopee</div>
+                </div>
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #dbeafe', background: 'linear-gradient(135deg, #eff6ff, #dbeafe)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: '600', textTransform: 'uppercase', marginBottom: '8px' }}>Doanh Thu (Từ Shopee)</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1e40af' }}>
+                    {new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_shopee_commission)}đ
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#1d4ed8', marginTop: '4px' }}>Tổng hoa hồng gốc từ đối tác</div>
+                </div>
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #fee2e2', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '12px', color: '#b91c1c', fontWeight: '600', textTransform: 'uppercase', marginBottom: '8px' }}>Tổng Chi Trả User</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#991b1b' }}>
+                    {new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_user_payouts)}đ
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px' }}>Hoa hồng User & người giới thiệu</div>
+                </div>
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #fef3c7', background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '12px', color: '#b45309', fontWeight: '600', textTransform: 'uppercase', marginBottom: '8px' }}>Thu / Chi Ngoài Hệ Thống</div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#15803d' }}>
+                    Thu: +{new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_manual_revenue)}đ
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#b91c1c', marginTop: '2px' }}>
+                    Chi: -{new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_manual_expense)}đ
+                  </div>
+                </div>
+                <div style={{ padding: '20px', borderRadius: '12px', border: '1px solid #dcfce7', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '12px', color: '#15803d', fontWeight: '600', textTransform: 'uppercase', marginBottom: '8px' }}>Lợi Nhuận Thực Tế</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#166534' }}>
+                    {new Intl.NumberFormat('vi-VN').format(financialsData.summary.total_actual_profit)}đ
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#15803d', marginTop: '4px' }}>Shopee Net + Thu ngoài - Chi ngoài</div>
+                </div>
+              </div>
+            )}
+
+            {/* Chart and Top Buyers Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+              
+              {/* Chart Section */}
+              <div style={{ padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', position: 'relative' }}>
+                <h4 style={{ marginBottom: '16px', color: '#0f172a', fontWeight: '700', fontSize: '15px' }}>Biểu đồ So Sánh Doanh Thu vs Lợi Nhuận</h4>
+                {financialsLoading ? (
+                  <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Đang tải biểu đồ...</div>
+                ) : financialsData && financialsData.chartData && financialsData.chartData.length > 0 ? (
+                  <div style={{ position: 'relative', height: '240px' }}>
+                    {(() => {
+                      const chartData = financialsData.chartData;
+                      const paddingLeft = 65;
+                      const paddingRight = 20;
+                      const paddingTop = 20;
+                      const paddingBottom = 40;
+                      const svgWidth = 720;
+                      const svgHeight = 240;
+                      
+                      const chartWidth = svgWidth - paddingLeft - paddingRight;
+                      const chartHeight = svgHeight - paddingTop - paddingBottom;
+                      
+                      const minVal = Math.min(0, ...chartData.map(d => Math.min(d.revenue, d.profit)));
+                      const maxVal = Math.max(100000, ...chartData.map(d => Math.max(d.revenue, d.profit))) * 1.15;
+                      const valRange = maxVal - minVal;
+                      
+                      const getY = (val) => paddingTop + chartHeight - ((val - minVal) / valRange) * chartHeight;
+                      const yZero = getY(0);
+                      
+                      const barSpacing = chartWidth / chartData.length;
+                      const barWidth = Math.max(3, Math.min(20, (barSpacing * 0.5) / 2));
+                      
+                      const gridLines = [];
+                      for (let i = 0; i <= 4; i++) {
+                        const ratio = i / 4;
+                        const val = minVal + ratio * valRange;
+                        gridLines.push({
+                          y: getY(val),
+                          label: new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(val) + 'đ'
+                        });
+                      }
+
+                      return (
+                        <div style={{ position: 'relative', width: '100%', height: '100%' }} onMouseLeave={() => setHoveredIndex(null)}>
+                          <svg width="100%" height="100%" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="xMidYMid meet">
+                            <defs>
+                              <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#3b82f6" />
+                                <stop offset="100%" stopColor="#1d4ed8" />
+                              </linearGradient>
+                              <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#10b981" />
+                                <stop offset="100%" stopColor="#047857" />
+                              </linearGradient>
+                              <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" />
+                                <stop offset="100%" stopColor="#b91c1c" />
+                              </linearGradient>
+                            </defs>
+
+                            {gridLines.map((line, idx) => (
+                              <g key={idx}>
+                                <line
+                                  x1={paddingLeft}
+                                  y1={line.y}
+                                  x2={svgWidth - paddingRight}
+                                  y2={line.y}
+                                  stroke="#e2e8f0"
+                                  strokeWidth="1"
+                                  strokeDasharray={idx === 0 || line.y === yZero ? '0' : '4 4'}
+                                />
+                                <text
+                                  x={paddingLeft - 8}
+                                  y={line.y + 4}
+                                  textAnchor="end"
+                                  fill="#64748b"
+                                  style={{ fontSize: '10px', fontWeight: '500' }}
+                                >
+                                  {line.label}
+                                </text>
+                              </g>
+                            ))}
+
+                            <line
+                              x1={paddingLeft}
+                              y1={yZero}
+                              x2={svgWidth - paddingRight}
+                              y2={yZero}
+                              stroke="#94a3b8"
+                              strokeWidth="1.5"
+                            />
+
+                            {chartData.map((d, i) => {
+                              const centerX = paddingLeft + (i + 0.5) * barSpacing;
+                              const revY = getY(d.revenue);
+                              const revH = Math.max(1, yZero - revY);
+                              const profY = getY(d.profit);
+                              const isPositive = d.profit >= 0;
+                              const profH = isPositive ? Math.max(1, yZero - profY) : Math.max(1, profY - yZero);
+                              const profYPos = isPositive ? profY : yZero;
+
+                              return (
+                                <g key={i}>
+                                  <rect
+                                    x={centerX - barWidth - 1}
+                                    y={revY}
+                                    width={barWidth}
+                                    height={revH}
+                                    fill="url(#revenueGrad)"
+                                    rx="1.5"
+                                    opacity={hoveredIndex === null || hoveredIndex === i ? 1 : 0.6}
+                                    style={{ transition: 'opacity 0.2s' }}
+                                  />
+                                  <rect
+                                    x={centerX + 1}
+                                    y={profYPos}
+                                    width={barWidth}
+                                    height={profH}
+                                    fill={isPositive ? "url(#profitGrad)" : "url(#lossGrad)"}
+                                    rx="1.5"
+                                    opacity={hoveredIndex === null || hoveredIndex === i ? 1 : 0.6}
+                                    style={{ transition: 'opacity 0.2s' }}
+                                  />
+
+                                  {(chartData.length <= 15 || i % Math.ceil(chartData.length / 10) === 0) && (
+                                    <text
+                                      x={centerX}
+                                      y={svgHeight - paddingBottom + 16}
+                                      textAnchor="middle"
+                                      fill="#64748b"
+                                      style={{ fontSize: '10px', fontWeight: '500' }}
+                                    >
+                                      {d.label}
+                                    </text>
+                                  )}
+
+                                  {hoveredIndex === i && (
+                                    <line
+                                      x1={centerX}
+                                      y1={paddingTop}
+                                      x2={centerX}
+                                      y2={svgHeight - paddingBottom}
+                                      stroke="#94a3b8"
+                                      strokeWidth="1"
+                                      strokeDasharray="2 2"
+                                      pointerEvents="none"
+                                    />
+                                  )}
+
+                                  <rect
+                                    x={paddingLeft + i * barSpacing}
+                                    y={paddingTop}
+                                    width={barSpacing}
+                                    height={chartHeight}
+                                    fill="transparent"
+                                    style={{ cursor: 'pointer' }}
+                                    onMouseEnter={() => setHoveredIndex(i)}
+                                  />
+                                </g>
+                              );
+                            })}
+                          </svg>
+
+                          {hoveredIndex !== null && chartData[hoveredIndex] && (
+                            <div style={{
+                              position: 'absolute',
+                              background: 'rgba(15, 23, 42, 0.95)',
+                              color: 'white',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              fontSize: '11px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                              pointerEvents: 'none',
+                              zIndex: 10,
+                              top: '-15px',
+                              left: `${Math.max(5, Math.min(svgWidth - 165, paddingLeft + (hoveredIndex + 0.5) * barSpacing - 75))}px`,
+                              width: '150px',
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              backdropFilter: 'blur(4px)'
+                            }}>
+                              <div style={{ fontWeight: '700', marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '2px' }}>
+                                {chartData[hoveredIndex].label}
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <span>Doanh thu:</span>
+                                <span style={{ color: '#60a5fa', fontWeight: '600' }}>
+                                  {new Intl.NumberFormat('vi-VN').format(chartData[hoveredIndex].revenue)}đ
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Lợi nhuận:</span>
+                                <span style={{ color: chartData[hoveredIndex].profit >= 0 ? '#34d399' : '#f87171', fontWeight: '600' }}>
+                                  {new Intl.NumberFormat('vi-VN').format(chartData[hoveredIndex].profit)}đ
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>Không có dữ liệu biểu đồ</div>
+                )}
+              </div>
+
+              {/* Top Buyers Section */}
+              <div style={{ padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <h4 style={{ marginBottom: '16px', color: '#0f172a', fontWeight: '700', fontSize: '15px' }}>Top Mua Hàng (Thành viên có doanh số mua cao nhất)</h4>
+                {financialsLoading ? (
+                  <div>Đang tải danh sách...</div>
+                ) : financialsData && financialsData.topBuyers && financialsData.topBuyers.length > 0 ? (
+                  <div className="table-container" style={{ overflowX: 'auto', maxHeight: '240px' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Hạng</th>
+                          <th>Username</th>
+                          <th>Họ Tên / Email</th>
+                          <th style={{ textAlign: 'right' }}>Đơn</th>
+                          <th style={{ textAlign: 'right' }}>Doanh số mua</th>
+                          <th style={{ textAlign: 'right' }}>Hoa hồng nhận</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {financialsData.topBuyers.map((buyer, idx) => (
+                          <tr key={buyer.username}>
+                            <td><strong>#{idx + 1}</strong></td>
+                            <td><span className="badge badge-user">{buyer.username}</span></td>
+                            <td>
+                              <div style={{ fontSize: '12px', fontWeight: '500' }}>{buyer.full_name || 'Chưa cập nhật'}</div>
+                              <div style={{ fontSize: '10px', color: '#64748b' }}>{buyer.email || '-'}</div>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>{buyer.order_count}</td>
+                            <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                              {new Intl.NumberFormat('vi-VN').format(buyer.total_order_value)}đ
+                            </td>
+                            <td style={{ textAlign: 'right', color: '#166534' }}>
+                              {new Intl.NumberFormat('vi-VN').format(buyer.total_user_commission)}đ
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '40px 0', textAlign: 'center', color: '#64748b' }}>Không có dữ liệu mua hàng trong khoảng thời gian này</div>
+                )}
+              </div>
+            </div>
+
+            {/* Manual Financial Logs */}
+            <div style={{ padding: '24px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', marginBottom: '32px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <h4 style={{ color: '#0f172a', fontWeight: '700', fontSize: '15px', margin: 0 }}>Ghi chép Thu / Chi Ngoài Hệ Thống (Server, Domain, Ads...)</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTransaction(null);
+                    setTransactionType('expense');
+                    setTransactionAmount('');
+                    setTransactionCategory('Server');
+                    setTransactionDescription('');
+                    setTransactionDate(new Date().toISOString().slice(0, 10));
+                    setShowAddTransactionModal(true);
+                  }}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  ➕ Ghi nhận Thu / Chi ngoài
+                </button>
+              </div>
+
+              {financialsLoading ? (
+                <div>Đang tải lịch sử...</div>
+              ) : financialsData && financialsData.manualTransactions && financialsData.manualTransactions.length > 0 ? (
+                <div className="table-container" style={{ overflowX: 'auto' }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Ngày giao dịch</th>
+                        <th>Loại</th>
+                        <th>Danh mục</th>
+                        <th>Số tiền</th>
+                        <th>Mô tả / Ghi chú</th>
+                        <th style={{ textAlign: 'center' }}>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {financialsData.manualTransactions.map((tx) => (
+                        <tr key={tx.id}>
+                          <td>{tx.transaction_date}</td>
+                          <td>
+                            <span className="badge" style={{
+                              backgroundColor: tx.type === 'revenue' ? '#dcfce7' : '#fee2e2',
+                              color: tx.type === 'revenue' ? '#15803d' : '#b91c1c',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '600'
+                            }}>
+                              {tx.type === 'revenue' ? 'Thu nhập' : 'Chi phí'}
+                            </span>
+                          </td>
+                          <td><strong>{tx.category}</strong></td>
+                          <td style={{ fontWeight: '600', color: tx.type === 'revenue' ? '#15803d' : '#b91c1c' }}>
+                            {tx.type === 'revenue' ? '+' : '-'}{new Intl.NumberFormat('vi-VN').format(tx.amount)}đ
+                          </td>
+                          <td>{tx.description || <span style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>Không có ghi chú</span>}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditTransaction(tx)}
+                                className="btn-secondary"
+                                style={{ padding: '4px 8px', fontSize: '12px' }}
+                              >
+                                Sửa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTransaction(tx.id)}
+                                className="btn-secondary"
+                                style={{ padding: '4px 8px', fontSize: '12px', color: '#ea4335', borderColor: '#fee2e2' }}
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: '#64748b' }}>Không có khoản thu chi ngoài hệ thống nào được ghi nhận trong khoảng thời gian này</div>
+              )}
+            </div>
+
+            {/* Manual Transaction Dialog */}
+            {showAddTransactionModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                backdropFilter: 'blur(4px)'
+              }}>
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '30px',
+                  width: '100%',
+                  maxWidth: '480px',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#111827' }}>
+                    {editingTransaction ? 'Chỉnh sửa giao dịch' : 'Ghi nhận Thu / Chi ngoài hệ thống'}
+                  </h3>
+                  <form onSubmit={handleAddTransaction}>
+                    
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                        Loại giao dịch
+                      </label>
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="tx_type"
+                            value="expense"
+                            checked={transactionType === 'expense'}
+                            onChange={() => setTransactionType('expense')}
+                          />
+                          <span>Chi phí (Expense)</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="tx_type"
+                            value="revenue"
+                            checked={transactionType === 'revenue'}
+                            onChange={() => setTransactionType('revenue')}
+                          />
+                          <span>Thu nhập (Revenue)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                        Số tiền (VND)
+                      </label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        required
+                        min="1000"
+                        value={transactionAmount}
+                        onChange={(e) => setTransactionAmount(e.target.value)}
+                        placeholder="Ví dụ: 350000"
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                        Hạng mục / Danh mục
+                      </label>
+                      <select
+                        className="form-input"
+                        value={transactionCategory}
+                        onChange={(e) => setTransactionCategory(e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                      >
+                        <option value="Server">Máy chủ (VPS, Hosting, Cloud)</option>
+                        <option value="Domain">Tên miền (Domain)</option>
+                        <option value="Quảng cáo">Quảng cáo (Ads)</option>
+                        <option value="Thưởng thêm">Thưởng đặc biệt / Event</option>
+                        <option value="Donate">Donate / Tài trợ</option>
+                        <option value="Khác">Hạng mục khác</option>
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                        Ngày giao dịch
+                      </label>
+                      <input
+                        type="date"
+                        className="form-input"
+                        required
+                        value={transactionDate}
+                        onChange={(e) => setTransactionDate(e.target.value)}
+                        style={{ width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: '#374151' }}>
+                        Mô tả chi tiết / Ghi chú
+                      </label>
+                      <textarea
+                        className="form-input"
+                        rows="3"
+                        value={transactionDescription}
+                        onChange={(e) => setTransactionDescription(e.target.value)}
+                        placeholder="Nhập mô tả cụ thể về khoản thu chi này..."
+                        style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', padding: '8px 12px' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'end' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                          setShowAddTransactionModal(false);
+                          setEditingTransaction(null);
+                        }}
+                        style={{ padding: '8px 16px', fontSize: '14px' }}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        style={{ padding: '8px 16px', fontSize: '14px' }}
+                      >
+                        {editingTransaction ? 'Cập nhật' : 'Ghi nhận'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
       </div>
