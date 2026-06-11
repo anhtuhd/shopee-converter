@@ -38,20 +38,14 @@ export default function Notes() {
     {
       type: 'warning',
       icon: '🔥',
-      title: '1. Quy tắc click link khi mua nhiều đơn (Nô Tì khẩn cáo!)',
+      title: '1. Quy tắc click link khi đặt mua nhiều đơn hàng liên tiếp',
       desc: (
         <span>
-          Nô Tì xin tụt quần xin lỗi các sếp. Mặc dù Nô Tì vẫn có các hướng dẫn và lưu ý đầy đủ, nhưng có thể cách nói hơi khô khan khó hiểu nên các sếp vẫn dễ hiểu nhầm khi săn sale đặt mua nhiều đơn.
+          Lưu ý quan trọng khi săn sale hoặc đặt mua nhiều đơn hàng khác nhau:
           <br /><br />
-          <strong>⚠️ Vấn đề cực kỳ quan trọng:</strong>
-          <br />
-          Ngay sau khi sếp <strong>đặt thành công 1 đơn hàng</strong>, các sàn (Shopee) sẽ <strong>tự động xóa toàn bộ lịch sử click link trước đó</strong> của sếp qua Nô Tì. Click 100 lần trước đó cũng chỉ ghi nhận cho duy nhất 1 đơn hàng đầu tiên được thanh toán.
-          <br />
-          Do đó, nếu sếp share link tất cả sản phẩm A, B, C, D sang Nô Tì trước, rồi vào giỏ hàng mua lần lượt mà không quay lại click link trên Nô Tì, thì ngày hôm sau sếp sẽ chỉ thấy ghi nhận duy nhất đơn hàng A.
+          Ngay sau khi bạn <strong>hoàn tất thanh toán một đơn hàng</strong>, Shopee sẽ <strong>tự động xóa toàn bộ lịch sử click link trước đó</strong> trên thiết bị. Do đó, nếu bạn click/dán link nhiều sản phẩm trước rồi mới vào giỏ hàng thanh toán lần lượt, hệ thống <strong>chỉ ghi nhận duy nhất đơn hàng đầu tiên</strong>.
           <br /><br />
-          <strong>💡 Giải pháp đúng để ghi nhận đủ đơn:</strong>
-          <br />
-          Sau khi sếp đặt xong đơn A ➡️ <strong>Bắt buộc phải quay lại Nô Tì click lại vào link sản phẩm B</strong> rồi mới đặt tiếp đơn B. Làm tương tự lần lượt với các sản phẩm C và D. Mua đơn nào xong là phải click lại link sản phẩm tiếp theo ngay trước khi mua nhé các sếp!
+          <strong>💡 Giải pháp đúng để ghi nhận đủ đơn:</strong> Sau khi đặt xong đơn hàng thứ nhất ➡️ Bạn <strong>bắt buộc phải quay lại ứng dụng để click lại vào link sản phẩm tiếp theo</strong> rồi mới tiến hành thanh toán đơn tiếp theo đó.
         </span>
       )
     },
