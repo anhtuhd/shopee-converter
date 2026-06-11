@@ -104,6 +104,12 @@ export async function PUT(request) {
 
     const db = await getConnection();
 
+    // Kiểm tra xem đơn hàng đã được gán user trước đó chưa (Chỉ cho phép thay đổi nếu đơn chưa xác định được user)
+    const [existingCheck] = await db.execute('SELECT sub_id1 FROM orders WHERE order_id = ? LIMIT 1', [orderId]);
+    if (existingCheck.length > 0 && existingCheck[0].sub_id1 && existingCheck[0].sub_id1.trim() !== '') {
+      return NextResponse.json({ error: `Đơn hàng "${orderId}" đã được xác định/gán cho user "${existingCheck[0].sub_id1}" trước đó, không thể thay đổi.` }, { status: 400 });
+    }
+
     // 1. Trường hợp hủy gán (username rỗng hoặc null)
     if (!username || username.trim() === '') {
       await db.execute(`

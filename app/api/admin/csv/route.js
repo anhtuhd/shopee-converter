@@ -235,47 +235,50 @@ export async function POST(request) {
       const finalSub1 = (existingSub1 !== null && existingSub1 !== '') ? existingSub1 : sub_id1;
 
       const lowerSub1 = finalSub1 ? finalSub1.toLowerCase() : '';
-      let rate = userRates[lowerSub1] || 0.50;
-
-      // 1. Áp dụng thưởng đặc biệt Admin set nếu khớp khoảng thời gian order_time
-      if (lowerSub1 && order_time && userBonuses[lowerSub1]) {
-        const orderDate = new Date(order_time);
-        const activeBonus = userBonuses[lowerSub1].find(b => orderDate >= b.startDate && orderDate <= b.endDate);
-        if (activeBonus) {
-          rate = rate + activeBonus.rate; // Đổi sang cộng dồn để hỗ trợ cả số âm và số dương!
-        }
-      }
-
-      // 2. Áp dụng tăng 5% hoa hồng cá nhân nếu nằm trong thời hạn bonus 30 ngày của bất kỳ cấp dưới nào
-      if (lowerSub1 && order_time && referralBonusIntervals[lowerSub1]) {
-        const orderDate = new Date(order_time);
-        const isEligibleForReferralBonus = referralBonusIntervals[lowerSub1].some(
-          interval => orderDate >= interval.start && orderDate <= interval.end
-        );
-        if (isEligibleForReferralBonus) {
-          rate += 0.05; // Tăng thêm 5%
-        }
-      }
-
-      const user_commission = total_commission * rate;
-
-      // 3. Tính toán hoa hồng thưởng giới thiệu cho Người giới thiệu (5% từ hoa hồng của cấp dưới)
+      let user_commission = 0;
       let referrer_id = null;
       let referrer_commission = 0;
       let referrer_payout_status = 'Chưa thanh toán';
 
-      if (lowerSub1 && referralMap[lowerSub1]) {
-        const refInfo = referralMap[lowerSub1];
-        referrer_id = refInfo.referrerId;
-        referrer_commission = user_commission * 0.05; // 5% hoa hồng của B thưởng cho A
-        referrer_payout_status = 'Đang chờ'; // Đang chờ thanh toán hoa hồng giới thiệu
+      if (lowerSub1) {
+        let rate = userRates[lowerSub1] || 0.50;
 
-        // Ghi nhận ngày hoàn thành đơn hàng đầu tiên của B để kích hoạt 30 ngày bonus cho A
-        if (status === 'Hoàn thành' || status === 'Đã thanh toán') {
-          if (!refInfo.firstOrderCompletedAt && !referralFirstOrderUpdates[refInfo.referredId]) {
-            const completedTimeStr = completed_time || order_time || new Date().toISOString().slice(0, 19).replace('T', ' ');
-            referralFirstOrderUpdates[refInfo.referredId] = completedTimeStr;
-            refInfo.firstOrderCompletedAt = completedTimeStr; // Cập nhật cache để tránh trùng lặp
+        // 1. Áp dụng thưởng đặc biệt Admin set nếu khớp khoảng thời gian order_time
+        if (order_time && userBonuses[lowerSub1]) {
+          const orderDate = new Date(order_time);
+          const activeBonus = userBonuses[lowerSub1].find(b => orderDate >= b.startDate && orderDate <= b.endDate);
+          if (activeBonus) {
+            rate = rate + activeBonus.rate; // Đổi sang cộng dồn để hỗ trợ cả số âm và số dương!
+          }
+        }
+
+        // 2. Áp dụng tăng 5% hoa hồng cá nhân nếu nằm trong thời hạn bonus 30 ngày của bất kỳ cấp dưới nào
+        if (order_time && referralBonusIntervals[lowerSub1]) {
+          const orderDate = new Date(order_time);
+          const isEligibleForReferralBonus = referralBonusIntervals[lowerSub1].some(
+            interval => orderDate >= interval.start && orderDate <= interval.end
+          );
+          if (isEligibleForReferralBonus) {
+            rate += 0.05; // Tăng thêm 5%
+          }
+        }
+
+        user_commission = total_commission * rate;
+
+        // 3. Tính toán hoa hồng thưởng giới thiệu cho Người giới thiệu (5% từ hoa hồng của cấp dưới)
+        if (referralMap[lowerSub1]) {
+          const refInfo = referralMap[lowerSub1];
+          referrer_id = refInfo.referrerId;
+          referrer_commission = user_commission * 0.05; // 5% hoa hồng của B thưởng cho A
+          referrer_payout_status = 'Đang chờ'; // Đang chờ thanh toán hoa hồng giới thiệu
+
+          // Ghi nhận ngày hoàn thành đơn hàng đầu tiên của B để kích hoạt 30 ngày bonus cho A
+          if (status === 'Hoàn thành' || status === 'Đã thanh toán') {
+            if (!refInfo.firstOrderCompletedAt && !referralFirstOrderUpdates[refInfo.referredId]) {
+              const completedTimeStr = completed_time || order_time || new Date().toISOString().slice(0, 19).replace('T', ' ');
+              referralFirstOrderUpdates[refInfo.referredId] = completedTimeStr;
+              refInfo.firstOrderCompletedAt = completedTimeStr; // Cập nhật cache để tránh trùng lặp
+            }
           }
         }
       }

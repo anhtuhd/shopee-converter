@@ -1300,21 +1300,23 @@ export default function AdminDashboard() {
                           <span className={`status-badge status-${(o.status || '').toLowerCase().replace(/ /g, '-')}`}>{o.status}</span>
                         </td>
                         <td style={{ padding: '12px 8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          <button 
-                            onClick={() => handleStartAssignUser(o)} 
-                            className="btn-primary" 
-                            style={{ 
-                              padding: '4px 8px', 
-                              fontSize: '12px', 
-                              background: o.sub_id1 ? '#64748b' : '#3b82f6',
-                              border: 'none',
-                              borderRadius: '4px',
-                              color: 'white',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {o.sub_id1 ? 'Đổi User' : 'Gán User'}
-                          </button>
+                          {!o.sub_id1 && (
+                            <button 
+                              onClick={() => handleStartAssignUser(o)} 
+                              className="btn-primary" 
+                              style={{ 
+                                padding: '4px 8px', 
+                                fontSize: '12px', 
+                                background: '#3b82f6',
+                                border: 'none',
+                                borderRadius: '4px',
+                                color: 'white',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Gán User
+                            </button>
+                          )}
                           {o.status === 'Hoàn thành' && (
                             <button onClick={() => handlePayOrder(o.id)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
                               Thanh toán lẻ
