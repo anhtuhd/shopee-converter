@@ -37,8 +37,28 @@ export default function Notes() {
   const noteCategories = [
     {
       type: 'warning',
+      icon: '🔥',
+      title: '1. Quy tắc click link khi mua nhiều đơn (Nô Tì khẩn cáo!)',
+      desc: (
+        <span>
+          Nô Tì xin tụt quần xin lỗi các sếp. Mặc dù Nô Tì vẫn có các hướng dẫn và lưu ý đầy đủ, nhưng có thể cách nói hơi khô khan khó hiểu nên các sếp vẫn dễ hiểu nhầm khi săn sale đặt mua nhiều đơn.
+          <br /><br />
+          <strong>⚠️ Vấn đề cực kỳ quan trọng:</strong>
+          <br />
+          Ngay sau khi sếp <strong>đặt thành công 1 đơn hàng</strong>, các sàn (Shopee) sẽ <strong>tự động xóa toàn bộ lịch sử click link trước đó</strong> của sếp qua Nô Tì. Click 100 lần trước đó cũng chỉ ghi nhận cho duy nhất 1 đơn hàng đầu tiên được thanh toán.
+          <br />
+          Do đó, nếu sếp share link tất cả sản phẩm A, B, C, D sang Nô Tì trước, rồi vào giỏ hàng mua lần lượt mà không quay lại click link trên Nô Tì, thì ngày hôm sau sếp sẽ chỉ thấy ghi nhận duy nhất đơn hàng A.
+          <br /><br />
+          <strong>💡 Giải pháp đúng để ghi nhận đủ đơn:</strong>
+          <br />
+          Sau khi sếp đặt xong đơn A ➡️ <strong>Bắt buộc phải quay lại Nô Tì click lại vào link sản phẩm B</strong> rồi mới đặt tiếp đơn B. Làm tương tự lần lượt với các sản phẩm C và D. Mua đơn nào xong là phải click lại link sản phẩm tiếp theo ngay trước khi mua nhé các sếp!
+        </span>
+      )
+    },
+    {
+      type: 'warning',
       icon: '⚠️',
-      title: '1. Không áp dụng cho Shopee Video & Shopee Live',
+      title: '2. Không áp dụng cho Shopee Video & Shopee Live',
       desc: (
         <span>
           Lưu ý cực kỳ quan trọng: Các sản phẩm được đặt mua có gắn tag{' '}
@@ -51,13 +71,13 @@ export default function Notes() {
     {
       type: 'info',
       icon: '💳',
-      title: '2. Yêu cầu cập nhật QR Code ngân hàng',
+      title: '3. Yêu cầu cập nhật QR Code ngân hàng',
       desc: 'Để nhận hoàn tiền tự động vào ngày 15 hàng tháng, bạn bắt buộc phải tải lên ảnh QR Code ngân hàng của mình trong mục "Thông tin cá nhân". Nếu chưa cập nhật, hệ thống sẽ tạm giữ hoa hồng tích lũy của bạn cho đến khi được cập nhật.',
     },
     {
       type: 'success',
       icon: '📅',
-      title: '3. Chu kỳ đối soát và Tự động thanh toán',
+      title: '4. Chu kỳ đối soát và Tự động thanh toán',
       desc: (
         <span>
           Toàn bộ hoa hồng tích lũy hợp lệ của bạn sẽ được hệ thống tổng hợp đối soát và tự động chuyển khoản thanh toán vào ngày 15 hàng tháng qua tài khoản ngân hàng từ mã QR bạn cung cấp.
@@ -82,7 +102,7 @@ export default function Notes() {
     {
       type: 'bonus',
       icon: '👥',
-      title: '4. Chương trình mời bạn bè & Nhận thưởng thụ động',
+      title: '5. Chương trình mời bạn bè & Nhận thưởng thụ động',
       desc: (
         <span>
           Mời bạn bè tham gia PiShare.site bằng cách chia sẻ Mã giới thiệu hoặc gửi link giới thiệu cá nhân: 
