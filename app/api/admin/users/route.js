@@ -27,7 +27,12 @@ export async function GET(request) {
     const db = await getConnection();
     
     if (limitParam === 'all') {
-      const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at FROM users ORDER BY username ASC');
+      const [rows] = await db.execute(`
+        SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at,
+               (SELECT COUNT(*) FROM orders WHERE sub_id1 = users.username) AS order_count
+        FROM users 
+        ORDER BY username ASC
+      `);
       return NextResponse.json({ users: rows });
     }
 
@@ -35,7 +40,13 @@ export async function GET(request) {
     const limit = 10;
     const offset = (page - 1) * limit;
 
-    const [rows] = await db.execute('SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit.toString(), offset.toString()]);
+    const [rows] = await db.execute(`
+      SELECT id, username, email, full_name, phone, bank_qr, role, commission_rate, custom_affiliate_id, created_at,
+             (SELECT COUNT(*) FROM orders WHERE sub_id1 = users.username) AS order_count
+      FROM users 
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `, [limit.toString(), offset.toString()]);
     const [countRows] = await db.execute('SELECT COUNT(*) as total FROM users');
     
     return NextResponse.json({

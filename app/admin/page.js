@@ -928,6 +928,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRemindWelcomeUser = async (userId) => {
+    if (!confirm('Gửi email giới thiệu & hướng dẫn sử dụng hệ thống cho user này?')) return;
+    try {
+      const res = await fetch('/api/admin/users/remind-welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Đã gửi email nhắc nhở thành công!');
+      } else {
+        alert(data.error || 'Lỗi khi gửi email nhắc nhở');
+      }
+    } catch (err) {
+      alert('Lỗi kết nối');
+    }
+  };
+
   const handleMarkPaid = async (username) => {
     if (!confirm(`Xác nhận đã thanh toán cho user ${username}? Hệ thống sẽ đánh dấu tất cả các đơn 'Hoàn thành' trước ngày ${cutoffDate} là 'Đã thanh toán'.`)) return;
     
@@ -1122,8 +1141,8 @@ export default function AdminDashboard() {
                         <td style={{ padding: '12px 8px' }}>
                           <span className={`status-badge ${u.role === 'admin' ? 'status-hoàn-thành' : 'status-đã-hủy'}`}>{u.role}</span>
                         </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <td style={{ padding: '12px 8px', minWidth: '340px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                             <button onClick={() => handleStartEditUser(u)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>
                               Sửa
                             </button>
@@ -1153,6 +1172,22 @@ export default function AdminDashboard() {
                                 }}
                               >
                                 Nhắc cập nhật
+                              </button>
+                            )}
+                            {u.order_count === 0 && (
+                              <button 
+                                onClick={() => handleRemindWelcomeUser(u.id)} 
+                                className="btn-primary" 
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  fontSize: '12px', 
+                                  backgroundColor: '#1a73e8', 
+                                  borderColor: '#1a73e8', 
+                                  color: '#ffffff',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                Nhắc sử dụng
                               </button>
                             )}
                           </div>
